@@ -1,17 +1,51 @@
-# disability_app
+# Disability Assist App
 
-A new Flutter project.
+A Flutter application designed to provide accessible assistance for people with disabilities. The app includes four core features to improve daily life.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+### 🏃‍♂️ Obstacle Detection
+- Detect obstacles using device sensors/camera
+- Provide real-time audio or vibration feedback
+- Help visually impaired users navigate safely
 
-A few resources to get you started if this is your first Flutter project:
+### 🛒 Product Detail Interpretation
+- Scan product barcodes or packaging
+- Use OCR/AI to interpret product information
+- Provide audible product details
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+### 🤟 Sign Language Recognition
+- Recognize sign language gestures in real time
+- Convert gestures to text and speech
+- Support multiple sign language formats
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 🔊 Noise Detection
+- Monitor ambient noise levels
+- Provide noise alerts
+- Help hearing-impaired users detect loud or dangerous sounds
+
+## Technology Stack
+
+- **Framework**: Flutter
+- **Language**: Dart
+- **Platforms**: iOS, Android, Web, macOS, Windows, Linux
+
+## Setup
+
+1. Install Flutter SDK
+2. Clone the project
+3. Run `flutter pub get` to install dependencies
+4. Run `flutter run` to start the app
+
+## Build
+
+- Debug: `flutter run`
+- Release: `flutter build apk` (Android) or `flutter build ios` (iOS)
+
+## Contributing
+
+Contributions, issues, and feature requests are welcome!
+
+## License
+
+This project is licensed under the MIT License.

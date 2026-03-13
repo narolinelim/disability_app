@@ -35,6 +35,27 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # Camera for live preview
+  camera: ^0.10.0
+
+  # Image processing for frame analysis
+  image: ^4.1.0
+
+  # Vibration feedback
+  vibration: ^2.0.0
+
+  # HTTP requests for API calls
+  http: ^1.1.0
+
+  # Image picker and file handling
+  image_picker: ^1.0.0
+  
+  # Path provider for file storage
+  path_provider: ^2.1.0
+
+  # UUID for unique file names
+  uuid: ^4.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
