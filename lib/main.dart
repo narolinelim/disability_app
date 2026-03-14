@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 
+import 'detection/services/tensorflow_service.dart';
 import 'obstacle.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await TensorflowService.ssdMobileNet.initialize();
   final cameras = await availableCameras();
   final backCamera = cameras.firstWhere(
     (c) => c.lensDirection == CameraLensDirection.back,

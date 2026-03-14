@@ -8,6 +8,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 
 import '../models/detection_config.dart';
 import '../models/detection_models.dart';
+import 'tensorflow_service.dart';
 
 class _Command {
   const _Command(this.processType, {this.args});
@@ -25,10 +26,11 @@ enum TensorflowProcessType {
 }
 
 class Detector {
-  Detector._(this._isolate, this._interpreter);
+  Detector._(this._isolate, this._interpreter, this._labels);
 
   final Isolate _isolate;
   final Interpreter _interpreter;
+  final List<String> _labels;
 
   late final SendPort _sendPort;
   bool _isReady = false;
@@ -39,16 +41,14 @@ class Detector {
   Stream<FrameResult> get resultsStream => _resultsStreamController.stream;
 
   static Future<Detector> start() async {
-    final options = InterpreterOptions()..threads = DetectionConfig.intraOpThreads;
-    final interpreter = await Interpreter.fromAsset(
-      DetectionConfig.modelAssetPath,
-      options: options,
-    );
+    final service = TensorflowService.ssdMobileNet;
+    final interpreter = service.interpreter;
+    final labels = service.labels;
 
     final receivePort = ReceivePort();
     final isolate = await Isolate.spawn(_DetectorServer._run, receivePort.sendPort);
 
-    final detector = Detector._(isolate, interpreter);
+    final detector = Detector._(isolate, interpreter, labels);
     receivePort.listen((message) {
       detector._handleCommand(message as _Command);
     });
@@ -75,6 +75,7 @@ class Detector {
             args: [
               rootIsolateToken,
               _interpreter.address,
+              _labels,
             ],
           ),
         );
@@ -143,6 +144,7 @@ class _DetectorServer {
 
   final SendPort _sendPort;
   Interpreter? _interpreter;
+  List<String> _labels = const [];
 
   static void _run(SendPort sendPort) {
     final receivePort = ReceivePort();
@@ -162,6 +164,8 @@ class _DetectorServer {
         final rootIsolateToken = command.args?[0] as RootIsolateToken;
         BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken);
         _interpreter = Interpreter.fromAddress(command.args?[1] as int);
+        final labels = command.args?[2] as List<Object?>?;
+        _labels = labels?.map((e) => e?.toString() ?? '').toList() ?? const [];
         _sendPort.send(const _Command(TensorflowProcessType.ready));
         break;
       case TensorflowProcessType.detect:
@@ -293,7 +297,7 @@ class _DetectorServer {
       detections.add(
         Detection(
           classId: classId,
-          className: DetectionConfig.labelForClassId(classId),
+          className: _labelForClassId(classId),
           confidence: score,
           bbox: rect,
           proximityScore: proximity,
@@ -470,5 +474,18 @@ class _DetectorServer {
         'height': d.bbox.height,
       },
     };
+  }
+
+  String _labelForClassId(int classId) {
+    final actualLabelLength = _labels.length - 1;
+    if (classId < 0 || classId > actualLabelLength) {
+      return '???';
+    }
+
+    final label = _labels[classId].trim();
+    if (label.isEmpty) {
+      return '???';
+    }
+    return label;
   }
 }
