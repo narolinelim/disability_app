@@ -36,6 +36,8 @@ migrate_working_dir/
 /coverage/
 **/ios/**/GeneratedPluginRegistrant.h
 **/ios/**/GeneratedPluginRegistrant.m
+**/generated_plugins.cmake
+
 
 # Symbolication related
 app.*.symbols
