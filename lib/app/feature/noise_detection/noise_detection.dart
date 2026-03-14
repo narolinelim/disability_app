@@ -1,3 +1,8 @@
+/*
+ * Pipeline location: app/feature/noise_detection/noise_detection.dart (Step 8 of 8)
+ * General function: Feature host UI that binds controller state/results and renders user-facing noise feedback.
+ * Return/output: Stateful widget that displays live status, latest classification, and warning styling.
+ */
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -56,6 +61,7 @@ class _NoiseDetectionHostState extends State<NoiseDetectionHost> {
 			debugPrint('Noise alert: $alert');
 
 			final now = DateTime.now();
+			// Keep spoken alerts throttled so repeated dangerous frames do not spam TTS.
 			if (_lastAnnouncementAt == null ||
 					now.difference(_lastAnnouncementAt!) >= const Duration(seconds: 2)) {
 				_lastAnnouncementAt = now;

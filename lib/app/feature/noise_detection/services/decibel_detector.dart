@@ -1,3 +1,8 @@
+/*
+ * Pipeline location: app/feature/noise_detection/services/decibel_detector.dart (Step 5 of 8)
+ * General function: Computes an RMS-based decibel estimate and evaluates danger threshold crossings.
+ * Return/output: calculateDb() returns estimated dB; isDanger() returns threshold decision.
+ */
 import 'dart:math';
 
 class DecibelDetector {
@@ -18,6 +23,7 @@ class DecibelDetector {
       return 0;
     }
 
+    // Estimate sound level from normalized PCM samples via RMS -> dB conversion.
     return 20 * log(rms) / ln10;
   }
 

@@ -1,3 +1,8 @@
+/*
+ * Pipeline location: app/feature/noise_detection/models/noise_detection_config.dart (Step 1 of 8)
+ * General function: Central constants for model assets, audio framing, thresholds, and runtime tuning.
+ * Return/output: Static configuration values consumed by services, controller, and UI.
+ */
 class NoiseDetectionConfig {
 	const NoiseDetectionConfig._();
 

@@ -1,13 +1,35 @@
+/*
+ * Pipeline location: app/feature/noise_detection/models/noise_detection_models.dart (Step 2 of 8)
+ * General function: Defines immutable data contracts for predictions, frame results, and UI state.
+ * Return/output: Model objects passed between services, controller, and widgets.
+ */
 class NoisePrediction {
 	const NoisePrediction({
-		required this.label,
+		required this.mid,
+		required this.displayName,
 		required this.confidence,
 		required this.index,
 	});
 
-	final String label;
+	final String mid;
+	final String displayName;
 	final double confidence;
 	final int index;
+
+	// Backward-compatible alias used by existing UI strings.
+	String get label => displayName;
+}
+
+class NoiseClassInfo {
+	const NoiseClassInfo({
+		required this.index,
+		required this.mid,
+		required this.displayName,
+	});
+
+	final int index;
+	final String mid;
+	final String displayName;
 }
 
 class NoiseFrameResult {

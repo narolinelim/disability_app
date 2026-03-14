@@ -1,3 +1,8 @@
+/*
+ * Pipeline location: app/feature/noise_detection/services/audio_service.dart (Step 6 of 8)
+ * General function: Streams microphone PCM audio, builds model windows, computes dB, and emits predictions.
+ * Return/output: resultsStream emits NoiseFrameResult events for controller/UI consumption.
+ */
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -63,6 +68,7 @@ class AudioService {
     _sampleBuffer.addAll(int16Buffer.map((sample) => sample / 32768.0));
 
     while (_sampleBuffer.length >= NoiseDetectionConfig.modelInputSamples) {
+      // Build a fixed-size model window and then advance by hopSamples (overlap windowing).
       final window = _sampleBuffer
           .take(NoiseDetectionConfig.modelInputSamples)
           .toList(growable: false);
@@ -76,6 +82,7 @@ class AudioService {
           DecibelDetector.isDanger(db, thresholdDb: dangerThresholdDb);
 
       final now = DateTime.now();
+        // Throttle inference to one prediction every configured interval to reduce UI churn.
       if (_lastPredictionAt != null &&
           now.difference(_lastPredictionAt!).inMilliseconds <
               NoiseDetectionConfig.predictionIntervalMs) {

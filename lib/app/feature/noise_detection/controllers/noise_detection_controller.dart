@@ -1,3 +1,8 @@
+/*
+ * Pipeline location: app/feature/noise_detection/controllers/noise_detection_controller.dart (Step 7 of 8)
+ * General function: Orchestrates model/audio lifecycle and exposes stream + ValueNotifier UI state.
+ * Return/output: start/pause/resume/dispose manage runtime; resultsStream publishes frame-level results.
+ */
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -40,9 +45,10 @@ class NoiseDetectionController with WidgetsBindingObserver {
 			_setUiState(uiState.value.copyWith(isModelReady: true, clearError: true));
 
 			if (_audioService == null) {
+				// Build processing services once and reuse them while the screen is alive.
 				final classifier = SoundClassifier(
 					interpreter: _tensorflowService.interpreter,
-					labels: _tensorflowService.labels,
+					classMap: _tensorflowService.classMap,
 					confidenceThreshold: NoiseDetectionConfig.confidenceThreshold,
 				);
 				_audioService = AudioService(
@@ -121,6 +127,7 @@ class NoiseDetectionController with WidgetsBindingObserver {
 		}
 
 		switch (state) {
+			// Pause recording when app is not foregrounded to avoid background capture.
 			case AppLifecycleState.resumed:
 				unawaited(resume());
 			case AppLifecycleState.inactive:
