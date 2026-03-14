@@ -28,7 +28,19 @@ class MyApp extends StatelessWidget {
           ? const Scaffold(
               body: Center(child: Text('Camera not initialized')),
             )
-          : TrafficDetectorScreen(camera: camera!),
+          : TrafficDetectorScreen(
+              camera: camera!,
+              frameResultStream: (result) {
+                for (final d in result.detections) {
+                  debugPrint(
+                    '${d.className} conf=${(d.confidence * 100).toStringAsFixed(1)}% '
+                    'proximity=${d.proximityScore.toStringAsFixed(1)} '
+                    'bbox=${d.bbox.left.toStringAsFixed(1)},${d.bbox.top.toStringAsFixed(1)},'
+                    '${d.bbox.width.toStringAsFixed(1)},${d.bbox.height.toStringAsFixed(1)}',
+                  );
+                }
+              },
+            ),
     );
   }
 }
