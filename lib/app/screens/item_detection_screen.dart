@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
+import '../services/app_announcer.dart';
 import '../widgets/app_navigation_bar.dart';
 import '../widgets/camera_feed_card.dart';
 import '../widgets/module_bottom_sheet.dart';
@@ -24,9 +25,22 @@ class ItemDetectionScreen extends StatefulWidget {
 }
 
 class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
+  static const _screenIndex = 1;
+  static const _initialCountdownSeconds = 3;
   static const _gravity = 9.81;
   static const _movementThreshold = 1.05;
   static const _jerkThreshold = 0.95;
+  static const _steadyBeforeCountdown = Duration(milliseconds: 450);
+  static const _screenAnnounceBuffer = Duration(milliseconds: 2400);
+  static const _captureProcessingDelay = Duration(milliseconds: 1200);
+  static const _steadyInstruction = 'Keep camera steady for 3 seconds.';
+  static const _movingInstruction = 'Phone is moving. Hold camera steady.';
+  static const _capturingInstruction = 'Capturing image now.';
+  static const _captureDoneInstruction =
+      'Capture complete. Waiting for analysis.';
+  static const _waitingForAnalysisText =
+      'Captured. Waiting for analysis result...';
+  static const _noItemDetectedText = 'No item detected yet';
 
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   Timer? _countdownTimer;
@@ -36,15 +50,35 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   double? _lastMagnitude;
 
   bool _isMoving = true;
+  bool _isPreparingCountdown = false;
   bool _isCountingDown = false;
   bool _isCapturing = false;
-  int _secondsRemaining = 3;
-  String _detectedItemText = 'No item detected yet';
+  int _secondsRemaining = _initialCountdownSeconds;
+  String _detectedItemText = _noItemDetectedText;
+  DateTime _countdownAllowedAfter = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
     super.initState();
     _accelerometerSubscription = accelerometerEventStream().listen(_onMotion);
+    if (_isCurrentScreenActive) {
+      _armCountdownAfterScreenAnnouncement();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ItemDetectionScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final becameActive =
+        oldWidget.selectedIndex != _screenIndex && _isCurrentScreenActive;
+    final becameInactive =
+        oldWidget.selectedIndex == _screenIndex && !_isCurrentScreenActive;
+    if (becameActive) {
+      _armCountdownAfterScreenAnnouncement();
+    }
+    if (becameInactive) {
+      _stopDetectionFlowOnExit();
+    }
   }
 
   @override
@@ -56,7 +90,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   }
 
   void _onMotion(AccelerometerEvent event) {
-    if (!mounted || _isCapturing) {
+    if (!mounted || _isCapturing || !_isCurrentScreenActive) {
       return;
     }
 
@@ -73,11 +107,12 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
 
     if (moving) {
       _steadySince = null;
-      if (!_isMoving || _isCountingDown) {
+      if (!_isMoving || _isCountingDown || _isPreparingCountdown) {
         _resetCountdown();
         setState(() {
           _isMoving = true;
         });
+        AppAnnouncer.instance.speak(_movingInstruction, interrupt: false);
       }
       return;
     }
@@ -90,20 +125,76 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
       });
     }
 
+    if (_isCountdownBlockedByAnnouncement) {
+      return;
+    }
+
     final steadyDuration = DateTime.now().difference(_steadySince!);
     if (!_isCountingDown &&
-        steadyDuration >= const Duration(milliseconds: 450)) {
+        !_isPreparingCountdown &&
+        steadyDuration >= _steadyBeforeCountdown) {
       _startAutoCaptureCountdown();
     }
   }
 
-  void _startAutoCaptureCountdown() {
+  bool get _isCurrentScreenActive => widget.selectedIndex == _screenIndex;
+
+  bool get _isCountdownBlockedByAnnouncement =>
+      DateTime.now().isBefore(_countdownAllowedAfter);
+
+  void _armCountdownAfterScreenAnnouncement() {
+    _countdownAllowedAfter = DateTime.now().add(_screenAnnounceBuffer);
+    _steadySince = null;
+    _countdownTimer?.cancel();
+    setState(() {
+      _isMoving = true;
+      _isCountingDown = false;
+      _secondsRemaining = _initialCountdownSeconds;
+    });
+  }
+
+  void _stopDetectionFlowOnExit() {
+    _countdownTimer?.cancel();
+    _captureTimer?.cancel();
+    _steadySince = null;
+    setState(() {
+      _isMoving = true;
+      _isPreparingCountdown = false;
+      _isCountingDown = false;
+      _isCapturing = false;
+      _secondsRemaining = _initialCountdownSeconds;
+    });
+  }
+
+  Future<void> _startAutoCaptureCountdown() async {
+    if (_isCountingDown || _isPreparingCountdown || _isCapturing) {
+      return;
+    }
+
     _countdownTimer?.cancel();
 
     setState(() {
-      _isCountingDown = true;
-      _secondsRemaining = 3;
+      _isPreparingCountdown = true;
+      _isCountingDown = false;
+      _secondsRemaining = _initialCountdownSeconds;
     });
+    await AppAnnouncer.instance.speak(_steadyInstruction);
+
+    if (!mounted || _isMoving || _isCapturing) {
+      setState(() {
+        _isPreparingCountdown = false;
+        _isCountingDown = false;
+        _secondsRemaining = _initialCountdownSeconds;
+      });
+      return;
+    }
+
+    setState(() {
+      _isPreparingCountdown = false;
+      _isCountingDown = true;
+      _secondsRemaining = _initialCountdownSeconds;
+    });
+    await AppAnnouncer.instance.announceCountdownNumber(_secondsRemaining);
 
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -115,6 +206,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
         setState(() {
           _secondsRemaining -= 1;
         });
+        AppAnnouncer.instance.announceCountdownNumber(_secondsRemaining);
         return;
       }
 
@@ -129,11 +221,12 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
     setState(() {
       _isCountingDown = false;
       _isCapturing = true;
-      _detectedItemText = 'Captured. Waiting for analysis result...';
+      _detectedItemText = _waitingForAnalysisText;
     });
+    AppAnnouncer.instance.speak(_capturingInstruction);
 
     _captureTimer?.cancel();
-    _captureTimer = Timer(const Duration(milliseconds: 1200), () {
+    _captureTimer = Timer(_captureProcessingDelay, () {
       if (!mounted) {
         return;
       }
@@ -142,21 +235,27 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
         _isMoving = true;
         _steadySince = null;
       });
+      AppAnnouncer.instance.speak(_captureDoneInstruction);
     });
   }
 
   void _resetCountdown() {
     _countdownTimer?.cancel();
     setState(() {
+      _isPreparingCountdown = false;
       _isCountingDown = false;
-      _secondsRemaining = 3;
+      _secondsRemaining = _initialCountdownSeconds;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final showCountdown = _isCountingDown && !_isCapturing;
-    final statusText = showCountdown
+    final statusText = _isCountdownBlockedByAnnouncement
+        ? 'Item detection ready. Listen for instructions.'
+        : _isPreparingCountdown
+        ? 'Keep phone steady. Countdown starts soon.'
+        : showCountdown
         ? 'Keep phone steady for $_secondsRemaining s'
         : (_isMoving
               ? 'Hold phone steady to start auto capture'
@@ -275,7 +374,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
             ModuleBottomSheet(
               title: 'Detected Item',
               accent: const Color(0xFFBBF7D0),
-              hasData: _detectedItemText != 'No item detected yet',
+              hasData: _detectedItemText != _noItemDetectedText,
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),

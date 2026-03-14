@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'services/app_announcer.dart';
 import 'screens/item_detection_screen.dart';
 import 'screens/noise_detection_screen.dart';
 import 'screens/obstacles_screen.dart';
@@ -13,6 +14,7 @@ class SenseBridgeHome extends StatefulWidget {
 }
 
 class _SenseBridgeHomeState extends State<SenseBridgeHome> {
+  static const _pageAnimationDuration = Duration(milliseconds: 240);
   int _selectedIndex = 0;
   late final PageController _pageController;
 
@@ -20,6 +22,9 @@ class _SenseBridgeHomeState extends State<SenseBridgeHome> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _announceCurrentScreen();
+    });
   }
 
   @override
@@ -32,14 +37,23 @@ class _SenseBridgeHomeState extends State<SenseBridgeHome> {
     if (index == _selectedIndex) {
       return;
     }
+    _setSelectedIndex(index);
+    _pageController.animateToPage(
+      index,
+      duration: _pageAnimationDuration,
+      curve: Curves.easeOutCubic,
+    );
+    _announceCurrentScreen(force: true);
+  }
+
+  void _setSelectedIndex(int index) {
     setState(() {
       _selectedIndex = index;
     });
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 240),
-      curve: Curves.easeOutCubic,
-    );
+  }
+
+  void _announceCurrentScreen({bool force = false}) {
+    AppAnnouncer.instance.announceScreenByIndex(_selectedIndex, force: force);
   }
 
   @override
@@ -50,9 +64,8 @@ class _SenseBridgeHomeState extends State<SenseBridgeHome> {
         if (index == _selectedIndex) {
           return;
         }
-        setState(() {
-          _selectedIndex = index;
-        });
+        _setSelectedIndex(index);
+        _announceCurrentScreen(force: true);
       },
       children: [
         ObstaclesScreen(

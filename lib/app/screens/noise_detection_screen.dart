@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/app_announcer.dart';
 import '../widgets/app_navigation_bar.dart';
 import '../widgets/module_bottom_sheet.dart';
 import '../widgets/module_header.dart';
@@ -54,6 +55,11 @@ class _NoiseDetectionScreenState extends State<NoiseDetectionScreen> {
                         setState(() {
                           _isListening = !_isListening;
                         });
+                        AppAnnouncer.instance.speak(
+                          _isListening
+                              ? 'Noise monitoring on.'
+                              : 'Noise monitoring paused.',
+                        );
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 350),
