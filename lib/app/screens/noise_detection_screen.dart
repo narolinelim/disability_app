@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:vibration/vibration.dart';
 import '../services/audio_stream_service.dart';
 import '../services/yamnet_service.dart';
 import '../services/label_loader.dart';
@@ -39,6 +39,10 @@ class _NoiseDetectionScreenState
   Map<int, String> _labels = {};
 
   bool _modelReady = false;
+
+  List<String> recentResults = [];
+  String detectedText = "No alarm detected";
+  DateTime? _lastVibrationTime;
 
   @override
   void initState() {
@@ -108,7 +112,40 @@ class _NoiseDetectionScreenState
             "Detected: $label  (${score.toStringAsFixed(2)})",
           );
 
+          final lowerLabel = label.toLowerCase();
+
+          recentResults.add(lowerLabel);
+
+          if (recentResults.length > 5) {
+            recentResults.removeAt(0);
+          }
+
+          int alarmCount = recentResults.where((e) =>
+          e.contains("alarm") || e.contains("static")).length;
+
+          if (alarmCount >= 3) {
+
+            setState(() {
+              detectedText = "🚨 Fire Alarm Detected!";
+            });
+
+            final now = DateTime.now();
+
+            if (_lastVibrationTime == null ||
+                now.difference(_lastVibrationTime!).inSeconds > 5) {
+
+              Vibration.vibrate(
+                pattern: [0, 500, 300, 500],
+              );
+
+              _lastVibrationTime = now;
+            }
+
+          }
+
+
         }
+
 
       }
 
@@ -243,21 +280,22 @@ class _NoiseDetectionScreenState
               ),
             ),
 
-            const ModuleBottomSheet(
+            ModuleBottomSheet(
               title: 'Recent Noise Alerts',
-              accent: Color(0xFFFED7AA),
-              hasData: false,
+              accent: const Color(0xFFFED7AA),
+              hasData: true,
               child: Padding(
-                padding: EdgeInsets.only(top: 6),
+                padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                  'No noise detected yet',
-                  style: TextStyle(
+                  detectedText,
+                  style: const TextStyle(
                     color: Color(0xFF6B7280),
                     fontSize: 14,
                   ),
                 ),
               ),
             ),
+
 
           ],
         ),
