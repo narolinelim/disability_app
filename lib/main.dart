@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:vibration/vibration.dart';
 
 void main() {
@@ -448,13 +450,151 @@ class _ObstacleDetectionViewState extends State<_ObstacleDetectionView> {
   }
 }
 
+// ===== OpenAI Text-to-Speech Service =====
+/// Service for converting text to speech using OpenAI API
+class TextToSpeechService {
+  static bool _isPlaying = false;
+  
+  // OpenAI API configuration
+  static const String _openaiApiKey = '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';
+  static const String _openaiTtsEndpoint = 'https://api.openai.com/v1/audio/speech';
+  static const String _model = 'tts-1'; // Fast model
+  static const String _voice = 'alloy'; // Clear, neutral voice
+
+  /// Initialize audio player
+  static Future<void> initialize() async {
+    debugPrint('TTS: Initializing OpenAI TTS Service...');
+    // No specific initialization needed for audioplayers
+    debugPrint('TTS: ✓ OpenAI TTS Service ready');
+  }
+
+  /// Convert text to speech using OpenAI API and play it
+  static Future<void> speak(String text) async {
+    if (text.isEmpty) {
+      debugPrint('TTS: Cannot speak empty text');
+      return;
+    }
+
+    debugPrint('TTS: ========== OPENAI TTS REQUEST ==========');
+    debugPrint('TTS: Text length: ${text.length} chars');
+
+    // Create a fresh AudioPlayer instance for each speak operation
+    final audioPlayer = AudioPlayer();
+    
+    try {
+      _isPlaying = true;
+
+      debugPrint('TTS: Calling OpenAI API for speech generation...');
+
+      final response = await http.post(
+        Uri.parse(_openaiTtsEndpoint),
+        headers: {
+          'Authorization': 'Bearer $_openaiApiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'model': _model,
+          'input': text,
+          'voice': _voice,
+          'response_format': 'mp3',
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      debugPrint('TTS: OpenAI API response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        debugPrint('TTS: ✓ Audio generated successfully (${response.bodyBytes.length} bytes)');
+
+        // Save audio to temporary file
+        final tempDir = await getTemporaryDirectory();
+        final audioFile = File('${tempDir.path}/tts_audio_${DateTime.now().millisecondsSinceEpoch}.mp3');
+        
+        await audioFile.writeAsBytes(response.bodyBytes);
+        debugPrint('TTS: ✓ Audio saved to: ${audioFile.path}');
+
+        // Play the audio
+        debugPrint('TTS: Starting audio playback...');
+        await audioPlayer.play(DeviceFileSource(audioFile.path));
+        
+        debugPrint('TTS: ✓ Audio playback started');
+
+        // Wait for playback to complete
+        debugPrint('TTS: Waiting for playback to complete...');
+        try {
+          await audioPlayer.onPlayerComplete.first
+              .timeout(const Duration(minutes: 5));
+          debugPrint('TTS: ✓ Audio playback completed');
+        } on TimeoutException {
+          debugPrint('TTS: Playback wait timeout');
+          throw Exception('Audio playback timeout');
+        } on StateError {
+          // Stream closed without emitting element (playback ended quickly)
+          debugPrint('TTS: ✓ Audio playback completed (stream closed)');
+        }
+
+        // Clean up temp file
+        try {
+          await audioFile.delete();
+          debugPrint('TTS: ✓ Temp audio file deleted');
+        } catch (e) {
+          debugPrint('TTS: Warning: Could not delete temp file: $e');
+        }
+      } else {
+        final errorBody = utf8.decode(response.bodyBytes);
+        debugPrint('TTS: ❌ API Error: ${response.statusCode}');
+        debugPrint('TTS: Error response: $errorBody');
+        throw Exception('OpenAI API error: ${response.statusCode} - $errorBody');
+      }
+    } catch (e) {
+      debugPrint('TTS: ❌ !!!!! ERROR !!!!!');
+      debugPrint('TTS: $e');
+      _isPlaying = false;
+      rethrow;
+    } finally {
+      _isPlaying = false;
+      // Clean up the AudioPlayer instance
+      try {
+        await audioPlayer.dispose();
+      } catch (e) {
+        debugPrint('TTS: Warning: Could not dispose audio player: $e');
+      }
+      debugPrint('TTS: ========== REQUEST END ==========');
+    }
+  }
+
+  /// Stop playback
+  static Future<void> stop() async {
+    try {
+      debugPrint('TTS: stop() called');
+      _isPlaying = false;
+      debugPrint('TTS: ✓ Stopped');
+    } catch (e) {
+      debugPrint('TTS: Error stopping: $e');
+      _isPlaying = false;
+    }
+  }
+
+  /// Check if currently playing
+  static bool get isSpeaking => _isPlaying;
+
+  /// Dispose resources (no-op, kept for API compatibility)
+  static Future<void> dispose() async {
+    try {
+      debugPrint('TTS: dispose() called');
+      debugPrint('TTS: ✓ Resources cleaned up');
+    } catch (e) {
+      debugPrint('TTS: Error disposing: $e');
+    }
+  }
+}
+
 // ===== AI Image Recognition Service =====
 /// Service for recognizing images using AI APIs
 class ImageRecognitionService {
   // Configuration for AI API
   // Replace these with your actual API keys
   static const String _googleVisionApiKey = 'YOUR_GOOGLE_CLOUD_VISION_API_KEY';
-  static const String _openaiApiKey = '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';
+  static const String _openaiApiKey = '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';
   static const String _googleVisionEndpoint =
       'https://vision.googleapis.com/v1/images:annotate';
   static const String _openaiVisionEndpoint =
@@ -627,7 +767,15 @@ class _ProductDetailViewState extends State<_ProductDetailView> {
   File? _selectedImage;
   String _recognitionResult = '📷 Take a photo or select an image to analyze';
   bool _isLoading = false;
+  bool _isSpeaking = false;
   final ImagePicker _imagePicker = ImagePicker();
+
+  @override
+  void dispose() {
+    // Clean up audio player
+    TextToSpeechService.dispose().ignore();
+    super.dispose();
+  }
 
   /// Pick image from device gallery
   Future<void> _pickImage() async {
@@ -717,6 +865,87 @@ class _ProductDetailViewState extends State<_ProductDetailView> {
     }
   }
 
+  /// Speak the recognition result
+  Future<void> _speakResult() async {
+    if (_recognitionResult.isEmpty || 
+        _recognitionResult == '📷 Take a photo or select an image to analyze' ||
+        _recognitionResult.startsWith('🔄')) {
+      _showError('Please get a recognition result first');
+      return;
+    }
+
+    // Extract only text without emoji for better speech recognition
+    String textToSpeak = _recognitionResult
+        .replaceAll(RegExp(r'[🏷️📝🎯🔄]'), '')
+        .trim();
+
+    if (textToSpeak.isEmpty) {
+      _showError('No text content to speak');
+      return;
+    }
+
+    setState(() => _isSpeaking = true);
+
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🔄 Generating audio with OpenAI...'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      debugPrint('_speakResult: Starting OpenAI TTS...');
+      await TextToSpeechService.speak(textToSpeak);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('✓ Audio played successfully'),
+            duration: const Duration(milliseconds: 800),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+      }
+      debugPrint('_speakResult: Audio playback completed');
+    } catch (e) {
+      debugPrint('_speakResult error: $e');
+      if (mounted) {
+        final errorMsg = e.toString();
+        final displayMsg = errorMsg.length > 100 
+            ? errorMsg.substring(0, 100) 
+            : errorMsg;
+        _showError('Failed to generate audio: $displayMsg');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSpeaking = false);
+      }
+    }
+  }
+
+  /// Stop speaking
+  Future<void> _stopSpeaking() async {
+    try {
+      await TextToSpeechService.stop();
+      if (mounted) {
+        setState(() => _isSpeaking = false);
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reading stopped'),
+            duration: Duration(milliseconds: 500),
+          ),
+        );
+      }
+    } catch (e) {
+      _showError('Failed to stop speaking: $e');
+    }
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -725,6 +954,40 @@ class _ProductDetailViewState extends State<_ProductDetailView> {
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+
+  /// Test TTS with a simple sentence
+  Future<void> _testTTS() async {
+    setState(() => _isSpeaking = true);
+
+    try {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🔊 Testing OpenAI TTS... Generating audio...'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      await TextToSpeechService.speak('Test. One Two Three. If you can hear this, Open A I Text to Speech is working correctly.');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('✓ Test completed successfully!'),
+            duration: const Duration(milliseconds: 800),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+      }
+    } catch (e) {
+      _showError('TTS Test Failed: ${e.toString().substring(0, 100)}');
+    } finally {
+      if (mounted) {
+        setState(() => _isSpeaking = false);
+      }
+    }
   }
 
   @override
@@ -829,6 +1092,41 @@ class _ProductDetailViewState extends State<_ProductDetailView> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+
+            // Text-to-Speech Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: (_isLoading || _recognitionResult.startsWith('📷') || _recognitionResult.startsWith('🔄'))
+                        ? null
+                        : (_isSpeaking ? _stopSpeaking : _speakResult),
+                    icon: Icon(_isSpeaking ? Icons.stop : Icons.volume_up),
+                    label: Text(_isSpeaking ? 'Stop Reading' : 'Read Result'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: _isSpeaking ? Colors.red : Colors.teal,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // TTS Diagnostic Button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _isLoading || _isSpeaking ? null : _testTTS,
+                icon: const Icon(Icons.volume_off),
+                label: const Text('🔧 Test TTS'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  foregroundColor: Colors.grey[700],
+                ),
+              ),
             ),
           ],
         ],

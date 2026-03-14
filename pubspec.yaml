@@ -56,6 +56,9 @@ dependencies:
   # UUID for unique file names
   uuid: ^4.0.0
 
+  # Audio playback
+  audioplayers: ^5.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
