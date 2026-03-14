@@ -1,6 +1,11 @@
+/*
+ * Pipeline location: app/feature/obstacle_detection/screen/detection_overlay.dart (Step 7 of 8)
+ * General function: Paints detection boxes and labels over camera preview using frame detection data.
+ * Return/output: build() returns a widget overlay layer; painter returns rendered canvas output.
+ */
 import 'package:flutter/material.dart';
 
-import '../detection/models/detection_models.dart';
+import '../models/detection_models.dart';
 
 class DetectionOverlay extends StatelessWidget {
   const DetectionOverlay({

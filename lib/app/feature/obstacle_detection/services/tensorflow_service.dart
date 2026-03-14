@@ -1,3 +1,8 @@
+/*
+ * Pipeline location: app/feature/obstacle_detection/services/tensorflow_service.dart (Step 3 of 8)
+ * General function: Loads the TFLite model and labels from bundled assets and holds interpreter state.
+ * Return/output: initialize() returns Future<void> and prepares interpreter/labels for downstream inference.
+ */
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 

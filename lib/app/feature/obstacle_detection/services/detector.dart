@@ -1,3 +1,8 @@
+/*
+ * Pipeline location: app/feature/obstacle_detection/services/detector.dart (Step 4 of 8)
+ * General function: Runs frame inference in an isolate, decodes model outputs, and streams structured detections.
+ * Return/output: Detector.start() returns Future<Detector>; resultsStream returns Stream<FrameResult>.
+ */
 import 'dart:async';
 import 'dart:isolate';
 import 'dart:math' as math;

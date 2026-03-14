@@ -1,3 +1,8 @@
+/*
+ * Pipeline location: app/feature/obstacle_detection/controllers/traffic_detector_controller.dart (Step 6 of 8)
+ * General function: Orchestrates camera stream + detector lifecycle and publishes UI state plus frame results.
+ * Return/output: start()/pauseStream()/resumeStream()/dispose() return Future<void>; resultsStream returns Stream<FrameResult>.
+ */
 import 'dart:async';
 
 import 'package:camera/camera.dart';

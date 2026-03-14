@@ -1,3 +1,8 @@
+/*
+ * Pipeline location: app/feature/obstacle_detection/models/detection_models.dart (Step 2 of 8)
+ * General function: Defines core data structures for frame results, detections, and detector UI state.
+ * Return/output: Provides typed model objects used as the pipeline data contract.
+ */
 import 'package:flutter/material.dart';
 
 class FrameResult {

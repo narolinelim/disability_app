@@ -1,10 +1,15 @@
+/*
+ * Pipeline location: app/feature/obstacle_detection/obstacle.dart (Step 8 of 8)
+ * General function: Hosts the live detection screen, binds controller state to UI, and forwards frame results.
+ * Return/output: build() returns the live camera + overlay UI; emits FrameResult through frameResultStream callback.
+ */
 import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
-import 'detection/controllers/traffic_detector_controller.dart';
-import 'detection/models/detection_models.dart';
+import 'controllers/traffic_detector_controller.dart';
+import 'models/detection_models.dart';
 import 'screen/detection_overlay.dart';
 
 class TrafficDetectorScreen extends StatefulWidget {

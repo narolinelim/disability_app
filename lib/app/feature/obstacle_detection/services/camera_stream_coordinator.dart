@@ -1,3 +1,8 @@
+/*
+ * Pipeline location: app/feature/obstacle_detection/services/camera_stream_coordinator.dart (Step 5 of 8)
+ * General function: Owns camera controller lifecycle and throttled frame streaming into the detector callback.
+ * Return/output: initialize()/startStream()/stopStream()/dispose() return Future<void>; controller getter returns CameraController?.
+ */
 import 'dart:async';
 
 import 'package:camera/camera.dart';
