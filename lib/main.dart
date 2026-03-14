@@ -1,48 +1,33 @@
 import 'package:flutter/material.dart';
-import 'package:camera/camera.dart';
+import 'package:flutter/services.dart';
 
-import 'detection/services/tensorflow_service.dart';
-import 'obstacle.dart';
+import 'app/sense_bridge_home.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await TensorflowService.ssdMobileNet.initialize();
-  final cameras = await availableCameras();
-  final backCamera = cameras.firstWhere(
-    (c) => c.lensDirection == CameraLensDirection.back,
-    orElse: () => cameras.first,
-  );
-  runApp(MyApp(camera: backCamera));
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+  runApp(const SenseBridgeApp());
 }
 
-class MyApp extends StatelessWidget {
-  final CameraDescription? camera;
-
-  const MyApp({super.key, this.camera});
+class SenseBridgeApp extends StatelessWidget {
+  const SenseBridgeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Traffic Detector',
+      title: 'SenseBridge',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(),
-      home: camera == null
-          ? const Scaffold(
-              body: Center(child: Text('Camera not initialized')),
-            )
-          : TrafficDetectorScreen(
-              camera: camera!,
-              frameResultStream: (result) {
-                for (final d in result.detections) {
-                  debugPrint(
-                    '${d.className} conf=${(d.confidence * 100).toStringAsFixed(1)}% '
-                    'proximity=${d.proximityScore.toStringAsFixed(1)} '
-                    'bbox=${d.bbox.left.toStringAsFixed(1)},${d.bbox.top.toStringAsFixed(1)},'
-                    '${d.bbox.width.toStringAsFixed(1)},${d.bbox.height.toStringAsFixed(1)}',
-                  );
-                }
-              },
-            ),
+      theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF3B82F6),
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF090D14),
+      ),
+      home: const SenseBridgeHome(),
     );
   }
 }
