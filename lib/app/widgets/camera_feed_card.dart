@@ -6,11 +6,13 @@ class CameraFeedCard extends StatelessWidget {
     required this.label,
     required this.accent,
     this.showPlaceholder = true,
+    this.liveFeed,
   });
 
   final String label;
   final Color accent;
   final bool showPlaceholder;
+  final Widget? liveFeed;
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +20,7 @@ class CameraFeedCard extends StatelessWidget {
       color: const Color(0xFF111827),
       child: Stack(
         children: [
+          if (liveFeed != null) Positioned.fill(child: liveFeed!),
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(

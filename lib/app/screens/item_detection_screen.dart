@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 import '../services/app_announcer.dart';
+import '../services/cloud_image_describer.dart';
 import '../widgets/app_navigation_bar.dart';
 import '../widgets/camera_feed_card.dart';
 import '../widgets/module_bottom_sheet.dart';
@@ -24,7 +26,8 @@ class ItemDetectionScreen extends StatefulWidget {
   State<ItemDetectionScreen> createState() => _ItemDetectionScreenState();
 }
 
-class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
+class _ItemDetectionScreenState extends State<ItemDetectionScreen>
+    with WidgetsBindingObserver {
   static const _screenIndex = 1;
   static const _initialCountdownSeconds = 3;
   static const _gravity = 9.81;
@@ -32,19 +35,23 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   static const _jerkThreshold = 0.95;
   static const _steadyBeforeCountdown = Duration(milliseconds: 450);
   static const _screenAnnounceBuffer = Duration(milliseconds: 2400);
-  static const _captureProcessingDelay = Duration(milliseconds: 1200);
   static const _steadyInstruction = 'Keep camera steady for 3 seconds.';
   static const _movingInstruction = 'Phone is moving. Hold camera steady.';
   static const _capturingInstruction = 'Capturing image now.';
-  static const _captureDoneInstruction =
-      'Capture complete. Waiting for analysis.';
-  static const _waitingForAnalysisText =
-      'Captured. Waiting for analysis result...';
+  static const _waitingForAnalysisText = 'Captured. Analyzing image...';
   static const _noItemDetectedText = 'No item detected yet';
+  static const _keyMissingText =
+      'OpenAI key is missing. Set OPENAI_API_KEY and rebuild.';
+  static const _cameraNotReadyText = 'Camera is not ready yet.';
+
+  final CloudImageDescriber _cloudImageDescriber = CloudImageDescriber();
 
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   Timer? _countdownTimer;
-  Timer? _captureTimer;
+
+  CameraController? _cameraController;
+  bool _isInitializingCamera = false;
+  bool _isCameraReady = false;
 
   DateTime? _steadySince;
   double? _lastMagnitude;
@@ -53,6 +60,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   bool _isPreparingCountdown = false;
   bool _isCountingDown = false;
   bool _isCapturing = false;
+  bool _isAnnouncingResult = false;
   int _secondsRemaining = _initialCountdownSeconds;
   String _detectedItemText = _noItemDetectedText;
   DateTime _countdownAllowedAfter = DateTime.fromMillisecondsSinceEpoch(0);
@@ -60,6 +68,8 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initializeCamera();
     _accelerometerSubscription = accelerometerEventStream().listen(_onMotion);
     if (_isCurrentScreenActive) {
       _armCountdownAfterScreenAnnouncement();
@@ -75,6 +85,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
         oldWidget.selectedIndex == _screenIndex && !_isCurrentScreenActive;
     if (becameActive) {
       _armCountdownAfterScreenAnnouncement();
+      _initializeCamera();
     }
     if (becameInactive) {
       _stopDetectionFlowOnExit();
@@ -82,15 +93,106 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _initializeCamera();
+      return;
+    }
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      _disposeCamera();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _accelerometerSubscription?.cancel();
     _countdownTimer?.cancel();
-    _captureTimer?.cancel();
+    _disposeCamera();
     super.dispose();
   }
 
+  Future<void> _initializeCamera() async {
+    if (_isInitializingCamera) {
+      return;
+    }
+    if (_cameraController != null && _cameraController!.value.isInitialized) {
+      if (!_isCameraReady && mounted) {
+        setState(() {
+          _isCameraReady = true;
+        });
+      }
+      return;
+    }
+
+    _isInitializingCamera = true;
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _isCameraReady = false;
+            _detectedItemText = 'No camera available on this device.';
+          });
+        }
+        return;
+      }
+
+      final selectedCamera = cameras.firstWhere(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+
+      final controller = CameraController(
+        selectedCamera,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+      await controller.initialize();
+      try {
+        await controller.setFlashMode(FlashMode.off);
+      } catch (_) {
+        // Flash control is not available on some devices.
+      }
+
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+
+      _cameraController = controller;
+      setState(() {
+        _isCameraReady = true;
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _isCameraReady = false;
+          _detectedItemText = 'Camera unavailable: $error';
+        });
+      }
+    } finally {
+      _isInitializingCamera = false;
+    }
+  }
+
+  Future<void> _disposeCamera() async {
+    final controller = _cameraController;
+    _cameraController = null;
+    _isCameraReady = false;
+    if (controller != null) {
+      await controller.dispose();
+    }
+  }
+
   void _onMotion(AccelerometerEvent event) {
-    if (!mounted || _isCapturing || !_isCurrentScreenActive) {
+    if (!mounted ||
+        _isCapturing ||
+        _isAnnouncingResult ||
+        !_isCurrentScreenActive ||
+        !_isCameraReady) {
       return;
     }
 
@@ -155,19 +257,22 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
 
   void _stopDetectionFlowOnExit() {
     _countdownTimer?.cancel();
-    _captureTimer?.cancel();
     _steadySince = null;
     setState(() {
       _isMoving = true;
       _isPreparingCountdown = false;
       _isCountingDown = false;
       _isCapturing = false;
+      _isAnnouncingResult = false;
       _secondsRemaining = _initialCountdownSeconds;
     });
   }
 
   Future<void> _startAutoCaptureCountdown() async {
-    if (_isCountingDown || _isPreparingCountdown || _isCapturing) {
+    if (_isCountingDown ||
+        _isPreparingCountdown ||
+        _isCapturing ||
+        _isAnnouncingResult) {
       return;
     }
 
@@ -180,7 +285,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
     });
     await AppAnnouncer.instance.speak(_steadyInstruction);
 
-    if (!mounted || _isMoving || _isCapturing) {
+    if (!mounted || _isMoving || _isCapturing || _isAnnouncingResult) {
       setState(() {
         _isPreparingCountdown = false;
         _isCountingDown = false;
@@ -211,31 +316,67 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
       }
 
       timer.cancel();
-      _captureImage();
+      _captureAndDescribeImage();
     });
   }
 
-  void _captureImage() {
-    _countdownTimer?.cancel();
+  Future<void> _captureAndDescribeImage() async {
+    if (_isCapturing || !_isCurrentScreenActive) {
+      return;
+    }
 
+    _countdownTimer?.cancel();
     setState(() {
       _isCountingDown = false;
       _isCapturing = true;
       _detectedItemText = _waitingForAnalysisText;
     });
-    AppAnnouncer.instance.speak(_capturingInstruction);
 
-    _captureTimer?.cancel();
-    _captureTimer = Timer(_captureProcessingDelay, () {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isCapturing = false;
-        _isMoving = true;
-        _steadySince = null;
-      });
-      AppAnnouncer.instance.speak(_captureDoneInstruction);
+    if (!_cloudImageDescriber.isConfigured) {
+      await _finishCaptureWithText(_keyMissingText);
+      return;
+    }
+
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) {
+      await _finishCaptureWithText(_cameraNotReadyText);
+      return;
+    }
+
+    try {
+      debugPrint('[SB_GENAI] capture flow started');
+      await AppAnnouncer.instance.speak(_capturingInstruction);
+      final image = await controller.takePicture();
+      final bytes = await image.readAsBytes();
+      final description = await _cloudImageDescriber.describe(bytes);
+      final normalized = description.trim().isEmpty
+          ? 'No clear item detected.'
+          : description.trim();
+      await _finishCaptureWithText(normalized);
+    } catch (error) {
+      await _finishCaptureWithText('Image analysis failed. $error');
+    }
+  }
+
+  Future<void> _finishCaptureWithText(String text) async {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _detectedItemText = text;
+      _isCapturing = false;
+      _isAnnouncingResult = true;
+      _isMoving = true;
+      _steadySince = null;
+    });
+    await AppAnnouncer.instance.speak(text);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isAnnouncingResult = false;
+      _isMoving = true;
+      _steadySince = null;
     });
   }
 
@@ -251,7 +392,11 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   @override
   Widget build(BuildContext context) {
     final showCountdown = _isCountingDown && !_isCapturing;
-    final statusText = _isCountdownBlockedByAnnouncement
+    final statusText = !_isCameraReady
+        ? 'Starting camera...'
+        : _isAnnouncingResult
+        ? 'Reading result. Next capture starts after announcement.'
+        : _isCountdownBlockedByAnnouncement
         ? 'Item detection ready. Listen for instructions.'
         : _isPreparingCountdown
         ? 'Keep phone steady. Countdown starts soon.'
@@ -280,8 +425,11 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
                   children: [
                     CameraFeedCard(
                       label: 'Point camera at item',
-                      accent: Color(0xFF3B82F6),
-                      showPlaceholder: !_isCountingDown,
+                      accent: const Color(0xFF3B82F6),
+                      showPlaceholder: !_isCameraReady,
+                      liveFeed: _isCameraReady && _cameraController != null
+                          ? CameraPreview(_cameraController!)
+                          : null,
                     ),
                     Container(
                       color: Colors.black.withValues(alpha: 0.18),
@@ -336,7 +484,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
                                   ),
                                   SizedBox(width: 12),
                                   Text(
-                                    'Capturing...',
+                                    'Analyzing...',
                                     style: TextStyle(
                                       color: Color(0xFF1F2937),
                                       fontSize: 16,
