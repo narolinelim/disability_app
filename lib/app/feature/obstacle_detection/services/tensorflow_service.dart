@@ -13,29 +13,56 @@ class TensorflowService {
 
   static const ssdMobileNet = TensorflowService._();
 
-  static late final Interpreter _interpreter;
-  static late final List<String> _labels;
+  static Interpreter? _interpreter;
+  static List<String>? _labels;
+  static Future<void>? _initializing;
 
-  Interpreter get interpreter => _interpreter;
-  List<String> get labels => _labels;
-
-  Future<void> initialize() async {
-    await Future.wait([
-      _loadModel(),
-      _loadLabels(),
-    ]);
+  Interpreter get interpreter {
+    final interpreter = _interpreter;
+    if (interpreter == null) {
+      throw StateError('TensorflowService is not initialized. Call initialize() first.');
+    }
+    return interpreter;
   }
 
-  Future<void> _loadModel() async {
+  List<String> get labels {
+    final labels = _labels;
+    if (labels == null) {
+      throw StateError('TensorflowService labels are not initialized. Call initialize() first.');
+    }
+    return labels;
+  }
+
+  Future<void> initialize() async {
+    if (_interpreter != null && _labels != null) {
+      return;
+    }
+
+    final inFlight = _initializing;
+    if (inFlight != null) {
+      await inFlight;
+      return;
+    }
+
+    final initFuture = _initializeInternal();
+    _initializing = initFuture;
+    try {
+      await initFuture;
+    } finally {
+      _initializing = null;
+    }
+  }
+
+  Future<void> _initializeInternal() async {
     final options = InterpreterOptions()..threads = DetectionConfig.intraOpThreads;
-    _interpreter = await Interpreter.fromAsset(
+    final interpreter = await Interpreter.fromAsset(
       DetectionConfig.modelAssetPath,
       options: options,
     );
-  }
 
-  Future<void> _loadLabels() async {
     final labelsRaw = await rootBundle.loadString(DetectionConfig.labelsAssetPath);
+
+    _interpreter = interpreter;
     _labels = labelsRaw.split(RegExp(r'\r?\n'));
   }
 }

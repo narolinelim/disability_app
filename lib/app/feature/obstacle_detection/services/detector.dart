@@ -140,7 +140,6 @@ class Detector {
   void stop() {
     _resultsStreamController.close();
     _isolate.kill();
-    _interpreter.close();
   }
 }
 
