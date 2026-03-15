@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:camera/camera.dart';
+import 'package:http/http.dart' as http;
+
 
 class CameraFeedCard extends StatelessWidget {
   const CameraFeedCard({
