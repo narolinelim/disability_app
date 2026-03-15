@@ -1,6 +1,6 @@
 {
-    "name": "disability_app",
-    "short_name": "disability_app",
+    "name": "SenseBridge",
+    "short_name": "SenseBridge",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

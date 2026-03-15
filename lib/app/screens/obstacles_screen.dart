@@ -83,7 +83,7 @@ class _ObstaclesScreenState extends State<ObstaclesScreen> {
       body: SafeArea(
         top: false,
         bottom: false,
-        child: Column(
+        child: Stack(
           children: [
             const ModuleHeader(
               title: 'Obstacles Detection',
@@ -154,17 +154,15 @@ class _ObstaclesScreenState extends State<ObstaclesScreen> {
                     );
                   },
                 ),
-              ),
+                const SizedBox(height: ModuleBottomSheet.collapsedHeight),
+              ],
             ),
             ModuleBottomSheet(
               title: 'Detected Obstacles',
               accent: const Color(0xFF93C5FD),
               hasData: _detectedObjects.isNotEmpty,
               child: _detectedObjects.isEmpty
-                  ? const Text(
-                      'Scanning for obstacles...',
-                      style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
-                    )
+                  ? const SizedBox.shrink()
                   : Column(
                       children: _detectedObjects
                           .map(

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
@@ -15,12 +16,34 @@ class AppAnnouncer {
 
   final FlutterTts _flutterTts = FlutterTts();
   bool _initialized = false;
+  bool _enabled = true;
   int? _lastScreenIndex;
   String? _lastTtsError;
   List<String> _engineNames = <String>[];
   int _engineCursor = 0;
   DateTime? _lastObstacleAnnouncementAt;
   String? _lastObstacleAnnouncementText;
+  final ValueNotifier<bool> _enabledNotifier = ValueNotifier<bool>(true);
+
+  ValueListenable<bool> get enabledListenable => _enabledNotifier;
+  bool get isEnabled => _enabled;
+
+  Future<void> setEnabled(bool enabled) async {
+    if (_enabled == enabled) {
+      return;
+    }
+    _enabled = enabled;
+    _enabledNotifier.value = enabled;
+    if (!enabled) {
+      try {
+        await _flutterTts.stop();
+      } catch (_) {
+        // Ignore stop errors from unavailable engines.
+      }
+    }
+  }
+
+  Future<void> toggleEnabled() => setEnabled(!_enabled);
 
   Future<void> _ensureInitialized() async {
     if (_initialized) {
@@ -116,7 +139,7 @@ class AppAnnouncer {
   }
 
   Future<void> speak(String text, {bool interrupt = true}) async {
-    if (text.trim().isEmpty) {
+    if (!_enabled || text.trim().isEmpty) {
       return;
     }
 
@@ -165,6 +188,9 @@ class AppAnnouncer {
   }
 
   Future<void> announceScreenByIndex(int index, {bool force = false}) async {
+    if (!_enabled) {
+      return;
+    }
     if (!force && _lastScreenIndex == index) {
       return;
     }
@@ -179,6 +205,9 @@ class AppAnnouncer {
   }
 
   Future<void> announceCountdownNumber(int value) async {
+    if (!_enabled) {
+      return;
+    }
     await SystemSound.play(SystemSoundType.click);
     await speak('$value');
   }

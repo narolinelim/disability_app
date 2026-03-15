@@ -49,3 +49,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Generated launcher icons (managed by flutter_launcher_icons)
+/android/app/src/main/res/mipmap-*/ic_launcher.png
+/android/app/src/main/res/drawable-*/ic_launcher_foreground.png
+/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+/android/app/src/main/res/values/colors.xml
+/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+/ios/Runner/Assets.xcassets/AppIcon.appiconset/*.png
