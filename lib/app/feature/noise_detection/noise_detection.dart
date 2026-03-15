@@ -6,12 +6,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../services/app_announcer.dart';
 import '../../widgets/module_bottom_sheet.dart';
 import '../../widgets/module_header.dart';
 import 'controllers/noise_detection_controller.dart';
 import 'models/noise_detection_models.dart';
+import 'package:vibration/vibration.dart';
+
+
 
 class NoiseDetectionHost extends StatefulWidget {
 	const NoiseDetectionHost({super.key});
@@ -44,34 +48,22 @@ class _NoiseDetectionHostState extends State<NoiseDetectionHost> {
 			final rowText = result.isDanger
 					? 'WARNING: $displayText'
 					: displayText;
-
-			debugPrint('Noise result: $rowText');
+      
 			setState(() {
 				_latestResult = rowText;
 				_latestIsWarning = result.isDanger;
 			});
 
-			if (!result.isDanger) {
-				return;
+      // List of sounds that needs to be vibrated
+      final List<String> vibrateSounds = ['Siren', 'Smoke alarm', 'Fire alarm', 'Smoke detector', 'Alarm', 'Car alarm', 'Car horn', 'Gunshot', 'Explosion', 'Baby crying', 'Dog barking', 'Bicycle bell'];
+
+			if (result.isDanger && vibrateSounds.contains(prediction.label)) {
+				// Vibrate
+        Vibration.vibrate(duration: 1000); // Vibrates for 1 second
 			}
-
-			final alert =
-					'${prediction.label} (${(prediction.confidence * 100).toStringAsFixed(0)}%) - ${result.decibel.toStringAsFixed(1)} dB';
-
-			debugPrint('Noise alert: $alert');
-
-			final now = DateTime.now();
-			// Keep spoken alerts throttled so repeated dangerous frames do not spam TTS.
-			if (_lastAnnouncementAt == null ||
-					now.difference(_lastAnnouncementAt!) >= const Duration(seconds: 2)) {
-				_lastAnnouncementAt = now;
-				unawaited(
-					AppAnnouncer.instance.speak(
-						'${prediction.label}, ${result.decibel.toStringAsFixed(0)} decibels',
-						interrupt: false,
-					),
-				);
-			}
+      else{
+        return;
+      }
 		});
 
 		unawaited(_controller.start());

@@ -5,9 +5,9 @@
  */
 import 'dart:math';
 
-class DecibelDetector {
-  static const double threshold = 50.0;
+import '../models/noise_detection_config.dart';
 
+class DecibelDetector {
   static double calculateDb(List<double> buffer) {
     if (buffer.isEmpty) {
       return 0;
@@ -27,7 +27,9 @@ class DecibelDetector {
     return 20 * log(rms) / ln10;
   }
 
-  static bool isDanger(double db, {double thresholdDb = threshold}) {
-    return db > thresholdDb;
+  static bool isDanger(double db, {double? thresholdDb}) {
+    final effectiveThreshold =
+        thresholdDb ?? NoiseDetectionConfig.alertDecibelThreshold;
+    return db > effectiveThreshold;
   }
 }
