@@ -53,6 +53,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   bool _isPreparingCountdown = false;
   bool _isCountingDown = false;
   bool _isCapturing = false;
+  bool _isSheetLevel3 = false;
   int _secondsRemaining = _initialCountdownSeconds;
   String _detectedItemText = _noItemDetectedText;
   DateTime _countdownAllowedAfter = DateTime.fromMillisecondsSinceEpoch(0);
@@ -90,7 +91,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   }
 
   void _onMotion(AccelerometerEvent event) {
-    if (!mounted || _isCapturing || !_isCurrentScreenActive) {
+    if (!mounted || _isCapturing || _isSheetLevel3 || !_isCurrentScreenActive) {
       return;
     }
 
@@ -167,7 +168,10 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   }
 
   Future<void> _startAutoCaptureCountdown() async {
-    if (_isCountingDown || _isPreparingCountdown || _isCapturing) {
+    if (_isCountingDown ||
+        _isPreparingCountdown ||
+        _isCapturing ||
+        _isSheetLevel3) {
       return;
     }
 
@@ -180,7 +184,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
     });
     await AppAnnouncer.instance.speak(_steadyInstruction);
 
-    if (!mounted || _isMoving || _isCapturing) {
+    if (!mounted || _isMoving || _isCapturing || _isSheetLevel3) {
       setState(() {
         _isPreparingCountdown = false;
         _isCountingDown = false;
@@ -216,6 +220,10 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   }
 
   void _captureImage() {
+    if (_isSheetLevel3) {
+      _resetCountdown();
+      return;
+    }
     _countdownTimer?.cancel();
 
     setState(() {
@@ -248,11 +256,44 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
     });
   }
 
+  void _onSheetLevelChanged(int level) {
+    final isLevel3 = level == 3;
+    if (_isSheetLevel3 == isLevel3 || !mounted) {
+      return;
+    }
+
+    if (isLevel3) {
+      _countdownTimer?.cancel();
+      _captureTimer?.cancel();
+      setState(() {
+        _isSheetLevel3 = true;
+        _isMoving = true;
+        _isPreparingCountdown = false;
+        _isCountingDown = false;
+        _isCapturing = false;
+        _secondsRemaining = _initialCountdownSeconds;
+        _steadySince = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSheetLevel3 = false;
+      _isMoving = true;
+      _steadySince = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final hasDetectedResult =
+        _detectedItemText != _noItemDetectedText &&
+        _detectedItemText != _waitingForAnalysisText;
     final showCountdown = _isCountingDown && !_isCapturing;
     final statusText = _isCountdownBlockedByAnnouncement
         ? 'Item detection ready. Listen for instructions.'
+        : _isSheetLevel3
+        ? 'Camera paused while panel is fully expanded.'
         : _isPreparingCountdown
         ? 'Keep phone steady. Countdown starts soon.'
         : showCountdown
@@ -266,131 +307,139 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
       body: SafeArea(
         top: false,
         bottom: false,
-        child: Column(
+        child: Stack(
           children: [
-            const ModuleHeader(
-              title: 'Item Detection',
-              accent: Color(0xFF16A34A),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CameraFeedCard(
-                      label: 'Point camera at item',
-                      accent: Color(0xFF3B82F6),
-                      showPlaceholder: !_isCountingDown,
-                    ),
-                    Container(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (showCountdown)
-                            Container(
-                              width: 92,
-                              height: 92,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black26,
-                                    blurRadius: 12,
-                                    offset: Offset(0, 5),
+            Column(
+              children: [
+                const ModuleHeader(
+                  title: 'Item Detection',
+                  accent: Color(0xFF16A34A),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CameraFeedCard(
+                          label: 'Point camera at item',
+                          accent: Color(0xFF3B82F6),
+                          showPlaceholder: !_isCountingDown,
+                        ),
+                        Container(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (showCountdown)
+                                Container(
+                                  width: 92,
+                                  height: 92,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 12,
+                                        offset: Offset(0, 5),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              child: Text(
-                                '$_secondsRemaining',
-                                style: const TextStyle(
-                                  color: Color(0xFF16A34A),
-                                  fontSize: 44,
-                                  fontWeight: FontWeight.w700,
+                                  child: Text(
+                                    '$_secondsRemaining',
+                                    style: const TextStyle(
+                                      color: Color(0xFF16A34A),
+                                      fontSize: 44,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                )
+                              else if (_isCapturing)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 22,
+                                    vertical: 14,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      Text(
+                                        'Capturing...',
+                                        style: TextStyle(
+                                          color: Color(0xFF1F2937),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              const SizedBox(height: 14),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.55),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  statusText,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
-                            )
-                          else if (_isCapturing)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 22,
-                                vertical: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'Capturing...',
-                                    style: TextStyle(
-                                      color: Color(0xFF1F2937),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          const SizedBox(height: 14),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.55),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              statusText,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: ModuleBottomSheet.collapsedHeight),
+              ],
             ),
             ModuleBottomSheet(
               title: 'Detected Item',
               accent: const Color(0xFFBBF7D0),
-              hasData: _detectedItemText != _noItemDetectedText,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFBBF7D0)),
-                ),
-                child: Text(
-                  _detectedItemText,
-                  style: const TextStyle(
-                    color: Color(0xFF1F2937),
-                    fontSize: 14,
-                  ),
-                ),
-              ),
+              hasData: hasDetectedResult,
+              onLevelChanged: _onSheetLevelChanged,
+              child: hasDetectedResult
+                  ? Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
+                      ),
+                      child: Text(
+                        _detectedItemText,
+                        style: const TextStyle(
+                          color: Color(0xFF1F2937),
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
           ],
         ),

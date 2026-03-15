@@ -22,38 +22,31 @@ class SignLanguageScreen extends StatelessWidget {
       body: SafeArea(
         top: false,
         bottom: false,
-        child: Column(
+        child: Stack(
           children: [
-            const ModuleHeader(
-              title: 'Sign Language Translation',
-              accent: Color(0xFF9333EA),
-            ),
-            const Expanded(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                child: CameraFeedCard(
-                  label: 'Show hand signs to camera',
-                  accent: Color(0xFF3B82F6),
+            Column(
+              children: [
+                const ModuleHeader(
+                  title: 'Sign Language Translation',
+                  accent: Color(0xFF9333EA),
                 ),
-              ),
+                const Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: CameraFeedCard(
+                      label: 'Show hand signs to camera',
+                      accent: Color(0xFF3B82F6),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: ModuleBottomSheet.collapsedHeight),
+              ],
             ),
             ModuleBottomSheet(
               title: 'Translation History',
               accent: const Color(0xFFE9D5FF),
               hasData: false,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFAF5FF),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE9D5FF)),
-                ),
-                child: const Text(
-                  'Waiting for hand signs...',
-                  style: TextStyle(color: Color(0xFF1F2937), fontSize: 14),
-                ),
-              ),
+              child: const SizedBox.shrink(),
             ),
           ],
         ),
