@@ -17,7 +17,7 @@ class NoiseDetectionConfig {
 	static const int hopSamples = 15600;
 
 	static const double confidenceThreshold = 0.25;
-	static const double alertDecibelThreshold = -12.0;
+	static const double alertDecibelThreshold = -17.0;
 	static const int predictionIntervalMs = 1000;
 	static const int intraOpThreads = 2;
 }

@@ -5,6 +5,7 @@
  */
 import 'dart:async';
 
+import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -29,12 +30,13 @@ class _NoiseDetectionHostState extends State<NoiseDetectionHost> {
 	StreamSubscription<NoiseFrameResult>? _resultsSubscription;
 	String? _latestResult;
 	bool _latestIsWarning = false;
-	DateTime? _lastAnnouncementAt;
+	final Set<String> _vibrationDangerLabels = <String>{};
 
 	@override
 	void initState() {
 		super.initState();
 		_controller = NoiseDetectionController();
+		unawaited(_loadVibrationDangerLabels());
 
 		// Listen to detection frames and convert dangerous predictions into visible alerts.
 		_resultsSubscription = _controller.resultsStream.listen((result) {
@@ -54,16 +56,13 @@ class _NoiseDetectionHostState extends State<NoiseDetectionHost> {
 				_latestIsWarning = result.isDanger;
 			});
 
-      // List of sounds that needs to be vibrated
-      final List<String> vibrateSounds = ['Siren', 'Smoke alarm', 'Fire alarm', 'Smoke detector', 'Alarm', 'Car alarm', 'Car horn', 'Gunshot', 'Explosion', 'Baby crying', 'Dog barking', 'Bicycle bell'];
-
-			if (result.isDanger && vibrateSounds.contains(prediction.label)) {
-				// Vibrate
-        Vibration.vibrate(duration: 1000); // Vibrates for 1 second
+			if (!result.isDanger) {
+				return;
 			}
-      else{
-        return;
-      }
+
+			if (_vibrationDangerLabels.contains(prediction.label)) {
+				unawaited(Vibration.vibrate(duration: 1000));
+			}
 		});
 
 		unawaited(_controller.start());
@@ -85,6 +84,57 @@ class _NoiseDetectionHostState extends State<NoiseDetectionHost> {
 
 		await _controller.resume();
 		await AppAnnouncer.instance.speak('Noise monitoring on.');
+	}
+
+	Future<void> _loadVibrationDangerLabels() async {
+		const csvPath = 'assets/noise_detection/yamnet_class_map_vibration.csv';
+
+		try {
+			final csvRaw = await rootBundle.loadString(csvPath);
+			final rows = const CsvToListConverter(
+				shouldParseNumbers: false,
+				eol: '\n',
+			).convert(csvRaw);
+
+			if (rows.isEmpty) {
+				return;
+			}
+
+			final header = rows.first.map((e) => e.toString().trim()).toList();
+			final displayNameIndex = header.indexOf('display_name');
+			final vibrationIndex = header.indexOf('vibration');
+
+			if (displayNameIndex < 0 || vibrationIndex < 0) {
+				debugPrint('CSV missing display_name or vibration columns.');
+				return;
+			}
+
+			final labels = <String>{};
+			for (final row in rows.skip(1)) {
+				if (row.length <= displayNameIndex || row.length <= vibrationIndex) {
+					continue;
+				}
+
+				final label = row[displayNameIndex].toString().trim();
+				final vibration = row[vibrationIndex].toString().trim().toLowerCase();
+
+				if (label.isNotEmpty && vibration == 'dangerous') {
+					labels.add(label);
+				}
+			}
+
+			if (!mounted) {
+				return;
+			}
+
+			setState(() {
+				_vibrationDangerLabels
+					..clear()
+					..addAll(labels);
+			});
+		} catch (e) {
+			debugPrint('Failed to load vibration danger labels: $e');
+		}
 	}
 
 	@override

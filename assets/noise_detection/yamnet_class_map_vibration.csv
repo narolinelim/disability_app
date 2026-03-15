@@ -1,0 +1,522 @@
+index,mid,display_name,vibration
+0,/m/09x0r,Speech,not dangerous
+1,/m/0ytgt,"Child speech, kid speaking",not dangerous
+2,/m/01h8n0,Conversation,not dangerous
+3,/m/02qldy,"Narration, monologue",not dangerous
+4,/m/0261r1,Babbling,not dangerous
+5,/m/0brhx,Speech synthesizer,not dangerous
+6,/m/07p6fty,Shout,not dangerous
+7,/m/07q4ntr,Bellow,not dangerous
+8,/m/07rwj3x,Whoop,not dangerous
+9,/m/07sr1lc,Yell,not dangerous
+10,/t/dd00135,Children shouting,not dangerous
+11,/m/03qc9zr,Screaming,not dangerous
+12,/m/02rtxlg,Whispering,not dangerous
+13,/m/01j3sz,Laughter,not dangerous
+14,/t/dd00001,Baby laughter,not dangerous
+15,/m/07r660_,Giggle,not dangerous
+16,/m/07s04w4,Snicker,not dangerous
+17,/m/07sq110,Belly laugh,not dangerous
+18,/m/07rgt08,"Chuckle, chortle",not dangerous
+19,/m/0463cq4,"Crying, sobbing",dangerous
+20,/t/dd00002,"Baby cry, infant cry",dangerous
+21,/m/07qz6j3,Whimper,not dangerous
+22,/m/07qw_06,"Wail, moan",not dangerous
+23,/m/07plz5l,Sigh,not dangerous
+24,/m/015lz1,Singing,not dangerous
+25,/m/0l14jd,Choir,not dangerous
+26,/m/01swy6,Yodeling,not dangerous
+27,/m/02bk07,Chant,not dangerous
+28,/m/01c194,Mantra,not dangerous
+29,/t/dd00005,Child singing,not dangerous
+30,/t/dd00006,Synthetic singing,not dangerous
+31,/m/06bxc,Rapping,not dangerous
+32,/m/02fxyj,Humming,not dangerous
+33,/m/07s2xch,Groan,not dangerous
+34,/m/07r4k75,Grunt,not dangerous
+35,/m/01w250,Whistling,not dangerous
+36,/m/0lyf6,Breathing,not dangerous
+37,/m/07mzm6,Wheeze,not dangerous
+38,/m/01d3sd,Snoring,not dangerous
+39,/m/07s0dtb,Gasp,not dangerous
+40,/m/07pyy8b,Pant,not dangerous
+41,/m/07q0yl5,Snort,not dangerous
+42,/m/01b_21,Cough,not dangerous
+43,/m/0dl9sf8,Throat clearing,not dangerous
+44,/m/01hsr_,Sneeze,not dangerous
+45,/m/07ppn3j,Sniff,not dangerous
+46,/m/06h7j,Run,not dangerous
+47,/m/07qv_x_,Shuffle,not dangerous
+48,/m/07pbtc8,"Walk, footsteps",not dangerous
+49,/m/03cczk,"Chewing, mastication",not dangerous
+50,/m/07pdhp0,Biting,not dangerous
+51,/m/0939n_,Gargling,not dangerous
+52,/m/01g90h,Stomach rumble,not dangerous
+53,/m/03q5_w,"Burping, eructation",not dangerous
+54,/m/02p3nc,Hiccup,not dangerous
+55,/m/02_nn,Fart,not dangerous
+56,/m/0k65p,Hands,not dangerous
+57,/m/025_jnm,Finger snapping,not dangerous
+58,/m/0l15bq,Clapping,not dangerous
+59,/m/01jg02,"Heart sounds, heartbeat",not dangerous
+60,/m/01jg1z,Heart murmur,not dangerous
+61,/m/053hz1,Cheering,not dangerous
+62,/m/028ght,Applause,not dangerous
+63,/m/07rkbfh,Chatter,not dangerous
+64,/m/03qtwd,Crowd,not dangerous
+65,/m/07qfr4h,"Hubbub, speech noise, speech babble",not dangerous
+66,/t/dd00013,Children playing,not dangerous
+67,/m/0jbk,Animal,not dangerous
+68,/m/068hy,"Domestic animals, pets",not dangerous
+69,/m/0bt9lr,Dog,not dangerous
+70,/m/05tny_,Bark,not dangerous
+71,/m/07r_k2n,Yip,not dangerous
+72,/m/07qf0zm,Howl,not dangerous
+73,/m/07rc7d9,Bow-wow,not dangerous
+74,/m/0ghcn6,Growling,not dangerous
+75,/t/dd00136,Whimper (dog),not dangerous
+76,/m/01yrx,Cat,not dangerous
+77,/m/02yds9,Purr,not dangerous
+78,/m/07qrkrw,Meow,not dangerous
+79,/m/07rjwbb,Hiss,not dangerous
+80,/m/07r81j2,Caterwaul,not dangerous
+81,/m/0ch8v,"Livestock, farm animals, working animals",not dangerous
+82,/m/03k3r,Horse,not dangerous
+83,/m/07rv9rh,Clip-clop,not dangerous
+84,/m/07q5rw0,"Neigh, whinny",not dangerous
+85,/m/01xq0k1,"Cattle, bovinae",not dangerous
+86,/m/07rpkh9,Moo,not dangerous
+87,/m/0239kh,Cowbell,not dangerous
+88,/m/068zj,Pig,not dangerous
+89,/t/dd00018,Oink,not dangerous
+90,/m/03fwl,Goat,not dangerous
+91,/m/07q0h5t,Bleat,not dangerous
+92,/m/07bgp,Sheep,not dangerous
+93,/m/025rv6n,Fowl,not dangerous
+94,/m/09b5t,"Chicken, rooster",not dangerous
+95,/m/07st89h,Cluck,not dangerous
+96,/m/07qn5dc,"Crowing, cock-a-doodle-doo",not dangerous
+97,/m/01rd7k,Turkey,not dangerous
+98,/m/07svc2k,Gobble,not dangerous
+99,/m/09ddx,Duck,not dangerous
+100,/m/07qdb04,Quack,not dangerous
+101,/m/0dbvp,Goose,not dangerous
+102,/m/07qwf61,Honk,not dangerous
+103,/m/01280g,Wild animals,not dangerous
+104,/m/0cdnk,"Roaring cats (lions, tigers)",not dangerous
+105,/m/04cvmfc,Roar,not dangerous
+106,/m/015p6,Bird,not dangerous
+107,/m/020bb7,"Bird vocalization, bird call, bird song",not dangerous
+108,/m/07pggtn,"Chirp, tweet",not dangerous
+109,/m/07sx8x_,Squawk,not dangerous
+110,/m/0h0rv,"Pigeon, dove",not dangerous
+111,/m/07r_25d,Coo,not dangerous
+112,/m/04s8yn,Crow,not dangerous
+113,/m/07r5c2p,Caw,not dangerous
+114,/m/09d5_,Owl,not dangerous
+115,/m/07r_80w,Hoot,not dangerous
+116,/m/05_wcq,"Bird flight, flapping wings",not dangerous
+117,/m/01z5f,"Canidae, dogs, wolves",not dangerous
+118,/m/06hps,"Rodents, rats, mice",not dangerous
+119,/m/04rmv,Mouse,not dangerous
+120,/m/07r4gkf,Patter,not dangerous
+121,/m/03vt0,Insect,not dangerous
+122,/m/09xqv,Cricket,not dangerous
+123,/m/09f96,Mosquito,not dangerous
+124,/m/0h2mp,"Fly, housefly",not dangerous
+125,/m/07pjwq1,Buzz,not dangerous
+126,/m/01h3n,"Bee, wasp, etc.",not dangerous
+127,/m/09ld4,Frog,not dangerous
+128,/m/07st88b,Croak,not dangerous
+129,/m/078jl,Snake,not dangerous
+130,/m/07qn4z3,Rattle,not dangerous
+131,/m/032n05,Whale vocalization,not dangerous
+132,/m/04rlf,Music,not dangerous
+133,/m/04szw,Musical instrument,not dangerous
+134,/m/0fx80y,Plucked string instrument,not dangerous
+135,/m/0342h,Guitar,not dangerous
+136,/m/02sgy,Electric guitar,not dangerous
+137,/m/018vs,Bass guitar,not dangerous
+138,/m/042v_gx,Acoustic guitar,not dangerous
+139,/m/06w87,"Steel guitar, slide guitar",not dangerous
+140,/m/01glhc,Tapping (guitar technique),not dangerous
+141,/m/07s0s5r,Strum,not dangerous
+142,/m/018j2,Banjo,not dangerous
+143,/m/0jtg0,Sitar,not dangerous
+144,/m/04rzd,Mandolin,not dangerous
+145,/m/01bns_,Zither,not dangerous
+146,/m/07xzm,Ukulele,not dangerous
+147,/m/05148p4,Keyboard (musical),not dangerous
+148,/m/05r5c,Piano,not dangerous
+149,/m/01s0ps,Electric piano,not dangerous
+150,/m/013y1f,Organ,not dangerous
+151,/m/03xq_f,Electronic organ,not dangerous
+152,/m/03gvt,Hammond organ,not dangerous
+153,/m/0l14qv,Synthesizer,not dangerous
+154,/m/01v1d8,Sampler,not dangerous
+155,/m/03q5t,Harpsichord,not dangerous
+156,/m/0l14md,Percussion,not dangerous
+157,/m/02hnl,Drum kit,not dangerous
+158,/m/0cfdd,Drum machine,not dangerous
+159,/m/026t6,Drum,not dangerous
+160,/m/06rvn,Snare drum,not dangerous
+161,/m/03t3fj,Rimshot,not dangerous
+162,/m/02k_mr,Drum roll,not dangerous
+163,/m/0bm02,Bass drum,not dangerous
+164,/m/011k_j,Timpani,not dangerous
+165,/m/01p970,Tabla,not dangerous
+166,/m/01qbl,Cymbal,not dangerous
+167,/m/03qtq,Hi-hat,not dangerous
+168,/m/01sm1g,Wood block,not dangerous
+169,/m/07brj,Tambourine,not dangerous
+170,/m/05r5wn,Rattle (instrument),not dangerous
+171,/m/0xzly,Maraca,not dangerous
+172,/m/0mbct,Gong,not dangerous
+173,/m/016622,Tubular bells,not dangerous
+174,/m/0j45pbj,Mallet percussion,not dangerous
+175,/m/0dwsp,"Marimba, xylophone",not dangerous
+176,/m/0dwtp,Glockenspiel,not dangerous
+177,/m/0dwt5,Vibraphone,not dangerous
+178,/m/0l156b,Steelpan,not dangerous
+179,/m/05pd6,Orchestra,not dangerous
+180,/m/01kcd,Brass instrument,not dangerous
+181,/m/0319l,French horn,not dangerous
+182,/m/07gql,Trumpet,not dangerous
+183,/m/07c6l,Trombone,not dangerous
+184,/m/0l14_3,Bowed string instrument,not dangerous
+185,/m/02qmj0d,String section,not dangerous
+186,/m/07y_7,"Violin, fiddle",not dangerous
+187,/m/0d8_n,Pizzicato,not dangerous
+188,/m/01xqw,Cello,not dangerous
+189,/m/02fsn,Double bass,not dangerous
+190,/m/085jw,"Wind instrument, woodwind instrument",not dangerous
+191,/m/0l14j_,Flute,not dangerous
+192,/m/06ncr,Saxophone,not dangerous
+193,/m/01wy6,Clarinet,not dangerous
+194,/m/03m5k,Harp,not dangerous
+195,/m/0395lw,Bell,dangerous
+196,/m/03w41f,Church bell,not dangerous
+197,/m/027m70_,Jingle bell,not dangerous
+198,/m/0gy1t2s,Bicycle bell,dangerous
+199,/m/07n_g,Tuning fork,not dangerous
+200,/m/0f8s22,Chime,not dangerous
+201,/m/026fgl,Wind chime,not dangerous
+202,/m/0150b9,Change ringing (campanology),not dangerous
+203,/m/03qjg,Harmonica,not dangerous
+204,/m/0mkg,Accordion,not dangerous
+205,/m/0192l,Bagpipes,not dangerous
+206,/m/02bxd,Didgeridoo,not dangerous
+207,/m/0l14l2,Shofar,not dangerous
+208,/m/07kc_,Theremin,not dangerous
+209,/m/0l14t7,Singing bowl,not dangerous
+210,/m/01hgjl,Scratching (performance technique),not dangerous
+211,/m/064t9,Pop music,not dangerous
+212,/m/0glt670,Hip hop music,not dangerous
+213,/m/02cz_7,Beatboxing,not dangerous
+214,/m/06by7,Rock music,not dangerous
+215,/m/03lty,Heavy metal,not dangerous
+216,/m/05r6t,Punk rock,not dangerous
+217,/m/0dls3,Grunge,not dangerous
+218,/m/0dl5d,Progressive rock,not dangerous
+219,/m/07sbbz2,Rock and roll,not dangerous
+220,/m/05w3f,Psychedelic rock,not dangerous
+221,/m/06j6l,Rhythm and blues,not dangerous
+222,/m/0gywn,Soul music,not dangerous
+223,/m/06cqb,Reggae,not dangerous
+224,/m/01lyv,Country,not dangerous
+225,/m/015y_n,Swing music,not dangerous
+226,/m/0gg8l,Bluegrass,not dangerous
+227,/m/02x8m,Funk,not dangerous
+228,/m/02w4v,Folk music,not dangerous
+229,/m/06j64v,Middle Eastern music,not dangerous
+230,/m/03_d0,Jazz,not dangerous
+231,/m/026z9,Disco,not dangerous
+232,/m/0ggq0m,Classical music,not dangerous
+233,/m/05lls,Opera,not dangerous
+234,/m/02lkt,Electronic music,not dangerous
+235,/m/03mb9,House music,not dangerous
+236,/m/07gxw,Techno,not dangerous
+237,/m/07s72n,Dubstep,not dangerous
+238,/m/0283d,Drum and bass,not dangerous
+239,/m/0m0jc,Electronica,not dangerous
+240,/m/08cyft,Electronic dance music,not dangerous
+241,/m/0fd3y,Ambient music,not dangerous
+242,/m/07lnk,Trance music,not dangerous
+243,/m/0g293,Music of Latin America,not dangerous
+244,/m/0ln16,Salsa music,not dangerous
+245,/m/0326g,Flamenco,not dangerous
+246,/m/0155w,Blues,not dangerous
+247,/m/05fw6t,Music for children,not dangerous
+248,/m/02v2lh,New-age music,not dangerous
+249,/m/0y4f8,Vocal music,not dangerous
+250,/m/0z9c,A capella,not dangerous
+251,/m/0164x2,Music of Africa,not dangerous
+252,/m/0145m,Afrobeat,not dangerous
+253,/m/02mscn,Christian music,not dangerous
+254,/m/016cjb,Gospel music,not dangerous
+255,/m/028sqc,Music of Asia,not dangerous
+256,/m/015vgc,Carnatic music,not dangerous
+257,/m/0dq0md,Music of Bollywood,not dangerous
+258,/m/06rqw,Ska,not dangerous
+259,/m/02p0sh1,Traditional music,not dangerous
+260,/m/05rwpb,Independent music,not dangerous
+261,/m/074ft,Song,not dangerous
+262,/m/025td0t,Background music,not dangerous
+263,/m/02cjck,Theme music,not dangerous
+264,/m/03r5q_,Jingle (music),not dangerous
+265,/m/0l14gg,Soundtrack music,not dangerous
+266,/m/07pkxdp,Lullaby,not dangerous
+267,/m/01z7dr,Video game music,not dangerous
+268,/m/0140xf,Christmas music,not dangerous
+269,/m/0ggx5q,Dance music,not dangerous
+270,/m/04wptg,Wedding music,not dangerous
+271,/t/dd00031,Happy music,not dangerous
+272,/t/dd00033,Sad music,not dangerous
+273,/t/dd00034,Tender music,not dangerous
+274,/t/dd00035,Exciting music,not dangerous
+275,/t/dd00036,Angry music,not dangerous
+276,/t/dd00037,Scary music,not dangerous
+277,/m/03m9d0z,Wind,not dangerous
+278,/m/09t49,Rustling leaves,not dangerous
+279,/t/dd00092,Wind noise (microphone),not dangerous
+280,/m/0jb2l,Thunderstorm,not dangerous
+281,/m/0ngt1,Thunder,not dangerous
+282,/m/0838f,Water,not dangerous
+283,/m/06mb1,Rain,not dangerous
+284,/m/07r10fb,Raindrop,not dangerous
+285,/t/dd00038,Rain on surface,not dangerous
+286,/m/0j6m2,Stream,not dangerous
+287,/m/0j2kx,Waterfall,not dangerous
+288,/m/05kq4,Ocean,not dangerous
+289,/m/034srq,"Waves, surf",not dangerous
+290,/m/06wzb,Steam,not dangerous
+291,/m/07swgks,Gurgling,not dangerous
+292,/m/02_41,Fire,dangerous
+293,/m/07pzfmf,Crackle,not dangerous
+294,/m/07yv9,Vehicle,dangerous
+295,/m/019jd,"Boat, Water vehicle",not dangerous
+296,/m/0hsrw,"Sailboat, sailing ship",not dangerous
+297,/m/056ks2,"Rowboat, canoe, kayak",not dangerous
+298,/m/02rlv9,"Motorboat, speedboat",not dangerous
+299,/m/06q74,Ship,not dangerous
+300,/m/012f08,Motor vehicle (road),dangerous
+301,/m/0k4j,Car,dangerous
+302,/m/0912c9,"Vehicle horn, car horn, honking",dangerous
+303,/m/07qv_d5,Toot,not dangerous
+304,/m/02mfyn,Car alarm,dangerous
+305,/m/04gxbd,"Power windows, electric windows",not dangerous
+306,/m/07rknqz,Skidding,not dangerous
+307,/m/0h9mv,Tire squeal,not dangerous
+308,/t/dd00134,Car passing by,dangerous
+309,/m/0ltv,"Race car, auto racing",dangerous
+310,/m/07r04,Truck,dangerous
+311,/m/0gvgw0,Air brake,dangerous
+312,/m/05x_td,"Air horn, truck horn",dangerous
+313,/m/02rhddq,Reversing beeps,not dangerous
+314,/m/03cl9h,"Ice cream truck, ice cream van",not dangerous
+315,/m/01bjv,Bus,dangerous
+316,/m/03j1ly,Emergency vehicle,dangerous
+317,/m/04qvtq,Police car (siren),dangerous
+318,/m/012n7d,Ambulance (siren),dangerous
+319,/m/012ndj,"Fire engine, fire truck (siren)",dangerous
+320,/m/04_sv,Motorcycle,dangerous
+321,/m/0btp2,"Traffic noise, roadway noise",dangerous
+322,/m/06d_3,Rail transport,dangerous
+323,/m/07jdr,Train,dangerous
+324,/m/04zmvq,Train whistle,dangerous
+325,/m/0284vy3,Train horn,dangerous
+326,/m/01g50p,"Railroad car, train wagon",dangerous
+327,/t/dd00048,Train wheels squealing,dangerous
+328,/m/0195fx,"Subway, metro, underground",dangerous
+329,/m/0k5j,Aircraft,dangerous
+330,/m/014yck,Aircraft engine,dangerous
+331,/m/04229,Jet engine,dangerous
+332,/m/02l6bg,"Propeller, airscrew",dangerous
+333,/m/09ct_,Helicopter,dangerous
+334,/m/0cmf2,"Fixed-wing aircraft, airplane",dangerous
+335,/m/0199g,Bicycle,dangerous
+336,/m/06_fw,Skateboard,not dangerous
+337,/m/02mk9,Engine,not dangerous
+338,/t/dd00065,Light engine (high frequency),not dangerous
+339,/m/08j51y,"Dental drill, dentist's drill",not dangerous
+340,/m/01yg9g,Lawn mower,not dangerous
+341,/m/01j4z9,Chainsaw,not dangerous
+342,/t/dd00066,Medium engine (mid frequency),not dangerous
+343,/t/dd00067,Heavy engine (low frequency),not dangerous
+344,/m/01h82_,Engine knocking,not dangerous
+345,/t/dd00130,Engine starting,not dangerous
+346,/m/07pb8fc,Idling,not dangerous
+347,/m/07q2z82,"Accelerating, revving, vroom",not dangerous
+348,/m/02dgv,Door,not dangerous
+349,/m/03wwcy,Doorbell,dangerous
+350,/m/07r67yg,Ding-dong,dangerous
+351,/m/02y_763,Sliding door,not dangerous
+352,/m/07rjzl8,Slam,not dangerous
+353,/m/07r4wb8,Knock,not dangerous
+354,/m/07qcpgn,Tap,not dangerous
+355,/m/07q6cd_,Squeak,not dangerous
+356,/m/0642b4,Cupboard open or close,not dangerous
+357,/m/0fqfqc,Drawer open or close,not dangerous
+358,/m/04brg2,"Dishes, pots, and pans",not dangerous
+359,/m/023pjk,"Cutlery, silverware",not dangerous
+360,/m/07pn_8q,Chopping (food),not dangerous
+361,/m/0dxrf,Frying (food),not dangerous
+362,/m/0fx9l,Microwave oven,not dangerous
+363,/m/02pjr4,Blender,not dangerous
+364,/m/02jz0l,"Water tap, faucet",not dangerous
+365,/m/0130jx,Sink (filling or washing),not dangerous
+366,/m/03dnzn,Bathtub (filling or washing),not dangerous
+367,/m/03wvsk,Hair dryer,not dangerous
+368,/m/01jt3m,Toilet flush,not dangerous
+369,/m/012xff,Toothbrush,not dangerous
+370,/m/04fgwm,Electric toothbrush,not dangerous
+371,/m/0d31p,Vacuum cleaner,not dangerous
+372,/m/01s0vc,Zipper (clothing),not dangerous
+373,/m/03v3yw,Keys jangling,not dangerous
+374,/m/0242l,Coin (dropping),not dangerous
+375,/m/01lsmm,Scissors,not dangerous
+376,/m/02g901,"Electric shaver, electric razor",not dangerous
+377,/m/05rj2,Shuffling cards,not dangerous
+378,/m/0316dw,Typing,not dangerous
+379,/m/0c2wf,Typewriter,not dangerous
+380,/m/01m2v,Computer keyboard,not dangerous
+381,/m/081rb,Writing,not dangerous
+382,/m/07pp_mv,Alarm,dangerous
+383,/m/07cx4,Telephone,dangerous
+384,/m/07pp8cl,Telephone bell ringing,dangerous
+385,/m/01hnzm,Ringtone,not dangerous
+386,/m/02c8p,"Telephone dialing, DTMF",not dangerous
+387,/m/015jpf,Dial tone,not dangerous
+388,/m/01z47d,Busy signal,not dangerous
+389,/m/046dlr,Alarm clock,dangerous
+390,/m/03kmc9,Siren,dangerous
+391,/m/0dgbq,Civil defense siren,not dangerous
+392,/m/030rvx,Buzzer,not dangerous
+393,/m/01y3hg,"Smoke detector, smoke alarm",dangerous
+394,/m/0c3f7m,Fire alarm,dangerous
+395,/m/04fq5q,Foghorn,not dangerous
+396,/m/0l156k,Whistle,not dangerous
+397,/m/06hck5,Steam whistle,not dangerous
+398,/t/dd00077,Mechanisms,not dangerous
+399,/m/02bm9n,"Ratchet, pawl",not dangerous
+400,/m/01x3z,Clock,not dangerous
+401,/m/07qjznt,Tick,not dangerous
+402,/m/07qjznl,Tick-tock,not dangerous
+403,/m/0l7xg,Gears,not dangerous
+404,/m/05zc1,Pulleys,not dangerous
+405,/m/0llzx,Sewing machine,not dangerous
+406,/m/02x984l,Mechanical fan,not dangerous
+407,/m/025wky1,Air conditioning,not dangerous
+408,/m/024dl,Cash register,not dangerous
+409,/m/01m4t,Printer,not dangerous
+410,/m/0dv5r,Camera,not dangerous
+411,/m/07bjf,Single-lens reflex camera,not dangerous
+412,/m/07k1x,Tools,not dangerous
+413,/m/03l9g,Hammer,not dangerous
+414,/m/03p19w,Jackhammer,not dangerous
+415,/m/01b82r,Sawing,not dangerous
+416,/m/02p01q,Filing (rasp),not dangerous
+417,/m/023vsd,Sanding,not dangerous
+418,/m/0_ksk,Power tool,not dangerous
+419,/m/01d380,Drill,not dangerous
+420,/m/014zdl,Explosion,dangerous
+421,/m/032s66,"Gunshot, gunfire",dangerous
+422,/m/04zjc,Machine gun,dangerous
+423,/m/02z32qm,Fusillade,not dangerous
+424,/m/0_1c,Artillery fire,not dangerous
+425,/m/073cg4,Cap gun,not dangerous
+426,/m/0g6b5,Fireworks,dangerous
+427,/g/122z_qxw,Firecracker,not dangerous
+428,/m/07qsvvw,"Burst, pop",not dangerous
+429,/m/07pxg6y,Eruption,not dangerous
+430,/m/07qqyl4,Boom,dangerous
+431,/m/083vt,Wood,not dangerous
+432,/m/07pczhz,Chop,not dangerous
+433,/m/07pl1bw,Splinter,not dangerous
+434,/m/07qs1cx,Crack,not dangerous
+435,/m/039jq,Glass,not dangerous
+436,/m/07q7njn,"Chink, clink",not dangerous
+437,/m/07rn7sz,Shatter,not dangerous
+438,/m/04k94,Liquid,not dangerous
+439,/m/07rrlb6,"Splash, splatter",not dangerous
+440,/m/07p6mqd,Slosh,not dangerous
+441,/m/07qlwh6,Squish,not dangerous
+442,/m/07r5v4s,Drip,not dangerous
+443,/m/07prgkl,Pour,not dangerous
+444,/m/07pqc89,"Trickle, dribble",not dangerous
+445,/t/dd00088,Gush,not dangerous
+446,/m/07p7b8y,Fill (with liquid),not dangerous
+447,/m/07qlf79,Spray,not dangerous
+448,/m/07ptzwd,Pump (liquid),not dangerous
+449,/m/07ptfmf,Stir,not dangerous
+450,/m/0dv3j,Boiling,not dangerous
+451,/m/0790c,Sonar,not dangerous
+452,/m/0dl83,Arrow,not dangerous
+453,/m/07rqsjt,"Whoosh, swoosh, swish",not dangerous
+454,/m/07qnq_y,"Thump, thud",not dangerous
+455,/m/07rrh0c,Thunk,not dangerous
+456,/m/0b_fwt,Electronic tuner,not dangerous
+457,/m/02rr_,Effects unit,not dangerous
+458,/m/07m2kt,Chorus effect,not dangerous
+459,/m/018w8,Basketball bounce,not dangerous
+460,/m/07pws3f,Bang,not dangerous
+461,/m/07ryjzk,"Slap, smack",not dangerous
+462,/m/07rdhzs,"Whack, thwack",not dangerous
+463,/m/07pjjrj,"Smash, crash",not dangerous
+464,/m/07pc8lb,Breaking,not dangerous
+465,/m/07pqn27,Bouncing,not dangerous
+466,/m/07rbp7_,Whip,not dangerous
+467,/m/07pyf11,Flap,not dangerous
+468,/m/07qb_dv,Scratch,not dangerous
+469,/m/07qv4k0,Scrape,not dangerous
+470,/m/07pdjhy,Rub,not dangerous
+471,/m/07s8j8t,Roll,not dangerous
+472,/m/07plct2,Crushing,not dangerous
+473,/t/dd00112,"Crumpling, crinkling",not dangerous
+474,/m/07qcx4z,Tearing,not dangerous
+475,/m/02fs_r,"Beep, bleep",not dangerous
+476,/m/07qwdck,Ping,not dangerous
+477,/m/07phxs1,Ding,not dangerous
+478,/m/07rv4dm,Clang,not dangerous
+479,/m/07s02z0,Squeal,not dangerous
+480,/m/07qh7jl,Creak,not dangerous
+481,/m/07qwyj0,Rustle,not dangerous
+482,/m/07s34ls,Whir,not dangerous
+483,/m/07qmpdm,Clatter,not dangerous
+484,/m/07p9k1k,Sizzle,not dangerous
+485,/m/07qc9xj,Clicking,not dangerous
+486,/m/07rwm0c,Clickety-clack,not dangerous
+487,/m/07phhsh,Rumble,not dangerous
+488,/m/07qyrcz,Plop,not dangerous
+489,/m/07qfgpx,"Jingle, tinkle",not dangerous
+490,/m/07rcgpl,Hum,not dangerous
+491,/m/07p78v5,Zing,not dangerous
+492,/t/dd00121,Boing,not dangerous
+493,/m/07s12q4,Crunch,not dangerous
+494,/m/028v0c,Silence,not dangerous
+495,/m/01v_m0,Sine wave,not dangerous
+496,/m/0b9m1,Harmonic,not dangerous
+497,/m/0hdsk,Chirp tone,not dangerous
+498,/m/0c1dj,Sound effect,not dangerous
+499,/m/07pt_g0,Pulse,not dangerous
+500,/t/dd00125,"Inside, small room",not dangerous
+501,/t/dd00126,"Inside, large room or hall",not dangerous
+502,/t/dd00127,"Inside, public space",not dangerous
+503,/t/dd00128,"Outside, urban or manmade",not dangerous
+504,/t/dd00129,"Outside, rural or natural",not dangerous
+505,/m/01b9nn,Reverberation,not dangerous
+506,/m/01jnbd,Echo,not dangerous
+507,/m/096m7z,Noise,not dangerous
+508,/m/06_y0by,Environmental noise,not dangerous
+509,/m/07rgkc5,Static,not dangerous
+510,/m/06xkwv,Mains hum,not dangerous
+511,/m/0g12c5,Distortion,not dangerous
+512,/m/08p9q4,Sidetone,not dangerous
+513,/m/07szfh9,Cacophony,not dangerous
+514,/m/0chx_,White noise,not dangerous
+515,/m/0cj0r,Pink noise,not dangerous
+516,/m/07p_0gm,Throbbing,not dangerous
+517,/m/01jwx6,Vibration,not dangerous
+518,/m/07c52,Television,not dangerous
+519,/m/06bz3,Radio,not dangerous
+520,/m/07hvw1,Field recording,not dangerous
