@@ -85,74 +85,78 @@ class _ObstaclesScreenState extends State<ObstaclesScreen> {
         bottom: false,
         child: Stack(
           children: [
-            const ModuleHeader(
-              title: 'Obstacles Detection',
-              accent: Color(0xFF2563EB),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: FutureBuilder<CameraDescription?>(
-                  future: _pipelineFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const CameraFeedCard(
-                        label: 'Preparing obstacle pipeline...',
-                        accent: Color(0xFF3B82F6),
-                      );
-                    }
-
-                    if (snapshot.hasError) {
-                      return CameraFeedCard(
-                        label: 'Pipeline failed: ${snapshot.error}',
-                        accent: const Color(0xFFEF4444),
-                      );
-                    }
-
-                    final camera = snapshot.data;
-                    if (camera == null) {
-                      return const CameraFeedCard(
-                        label: 'No camera available',
-                        accent: Color(0xFFEF4444),
-                      );
-                    }
-
-                    return GestureDetector(
-                      onTap: () => _openDetector(camera),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          const CameraFeedCard(
-                            label: 'Tap to open live detection',
+            Column(
+              children: [
+                const ModuleHeader(
+                  title: 'Obstacles Detection',
+                  accent: Color(0xFF2563EB),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: FutureBuilder<CameraDescription?>(
+                      future: _pipelineFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) {
+                          return const CameraFeedCard(
+                            label: 'Preparing obstacle pipeline...',
                             accent: Color(0xFF3B82F6),
-                          ),
-                          Align(
-                            alignment: Alignment.bottomCenter,
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 20),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2563EB),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: const Text(
-                                  'Start Live Detection',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
+                          );
+                        }
+
+                        if (snapshot.hasError) {
+                          return CameraFeedCard(
+                            label: 'Pipeline failed: ${snapshot.error}',
+                            accent: const Color(0xFFEF4444),
+                          );
+                        }
+
+                        final camera = snapshot.data;
+                        if (camera == null) {
+                          return const CameraFeedCard(
+                            label: 'No camera available',
+                            accent: Color(0xFFEF4444),
+                          );
+                        }
+
+                        return GestureDetector(
+                          onTap: () => _openDetector(camera),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              const CameraFeedCard(
+                                label: 'Tap to open live detection',
+                                accent: Color(0xFF3B82F6),
+                              ),
+                              Align(
+                                alignment: Alignment.bottomCenter,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 20),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2563EB),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: const Text(
+                                      'Start Live Detection',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  },
+                        );
+                      },
+                    ),
+                  ),
                 ),
                 const SizedBox(height: ModuleBottomSheet.collapsedHeight),
               ],

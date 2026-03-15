@@ -143,100 +143,105 @@ class _NoiseDetectionHostState extends State<NoiseDetectionHost> {
 		return ValueListenableBuilder<NoiseUiState>(
 			valueListenable: _controller.uiState,
 			builder: (context, state, _) {
-				return Column(
+				return Stack(
 					children: [
-						const ModuleHeader(
-							title: 'Noise Detection',
-							accent: Color(0xFFEA580C),
-						),
-						Expanded(
-							child: Container(
-								width: double.infinity,
-								margin: const EdgeInsets.symmetric(horizontal: 10),
-								padding: const EdgeInsets.all(24),
-								decoration: const BoxDecoration(
-									gradient: LinearGradient(
-										begin: Alignment.topCenter,
-										end: Alignment.bottomCenter,
-										colors: [Color(0xFFFFF7ED), Colors.white],
+						Column(
+							children: [
+								const ModuleHeader(
+									title: 'Noise Detection',
+									accent: Color(0xFFEA580C),
+								),
+								Expanded(
+									child: Container(
+										width: double.infinity,
+										margin: const EdgeInsets.symmetric(horizontal: 10),
+										padding: const EdgeInsets.all(24),
+										decoration: const BoxDecoration(
+											gradient: LinearGradient(
+												begin: Alignment.topCenter,
+												end: Alignment.bottomCenter,
+												colors: [Color(0xFFFFF7ED), Colors.white],
+											),
+										),
+										child: Column(
+											mainAxisAlignment: MainAxisAlignment.center,
+											children: [
+												GestureDetector(
+													onTap: () => _toggleListening(state.isListening),
+													child: AnimatedContainer(
+														duration: const Duration(milliseconds: 350),
+														width: 96,
+														height: 96,
+														decoration: BoxDecoration(
+															shape: BoxShape.circle,
+															color: state.isListening
+																	? const Color(0xFFDCFCE7)
+																	: const Color(0xFFE5E7EB),
+														),
+														child: Icon(
+															Icons.volume_up_outlined,
+															size: 48,
+															color: state.isListening
+																	? const Color(0xFF16A34A)
+																	: const Color(0xFF9CA3AF),
+														),
+													),
+												),
+												const SizedBox(height: 22),
+												Text(
+													state.isListening
+															? 'Listening for Sounds'
+															: 'Monitoring Paused',
+													style: const TextStyle(
+														color: Color(0xFF111827),
+														fontSize: 20,
+														fontWeight: FontWeight.w700,
+													),
+												),
+												const SizedBox(height: 10),
+												Text(
+													state.error != null
+															? state.error!
+															: state.isListening
+																	? 'Actively monitoring environmental sounds'
+																	: 'Tap center icon to resume monitoring',
+													textAlign: TextAlign.center,
+													style: TextStyle(
+														color: state.error != null
+																? const Color(0xFFB91C1C)
+																: const Color(0xFF4B5563),
+														fontSize: 14,
+													),
+												),
+												const SizedBox(height: 16),
+												Text(
+													state.lastDecibel == null
+															? (state.isModelReady
+																	? 'Model ready'
+																	: 'Loading noise model...')
+															// Live dB result rendered here from controller uiState.
+															: 'Current level: ${state.lastDecibel!.toStringAsFixed(1)} dB',
+													style: const TextStyle(
+														color: Color(0xFF6B7280),
+														fontSize: 13,
+													),
+												),
+												const SizedBox(height: 8),
+												Text(
+													state.lastLabel == null
+															? 'Detected sound: -'
+															: 'Detected sound: ${state.lastLabel}',
+													style: const TextStyle(
+														color: Color(0xFF374151),
+														fontSize: 13,
+													),
+												),
+											],
+										),
 									),
 								),
-								child: Column(
-									mainAxisAlignment: MainAxisAlignment.center,
-									children: [
-										GestureDetector(
-											onTap: () => _toggleListening(state.isListening),
-											child: AnimatedContainer(
-												duration: const Duration(milliseconds: 350),
-												width: 96,
-												height: 96,
-												decoration: BoxDecoration(
-													shape: BoxShape.circle,
-													color: state.isListening
-															? const Color(0xFFDCFCE7)
-															: const Color(0xFFE5E7EB),
-												),
-												child: Icon(
-													Icons.volume_up_outlined,
-													size: 48,
-													color: state.isListening
-															? const Color(0xFF16A34A)
-															: const Color(0xFF9CA3AF),
-												),
-											),
-										),
-										const SizedBox(height: 22),
-										Text(
-											state.isListening
-													? 'Listening for Sounds'
-													: 'Monitoring Paused',
-											style: const TextStyle(
-												color: Color(0xFF111827),
-												fontSize: 20,
-												fontWeight: FontWeight.w700,
-											),
-										),
-										const SizedBox(height: 10),
-										Text(
-											state.error != null
-													? state.error!
-													: state.isListening
-															? 'Actively monitoring environmental sounds'
-															: 'Tap center icon to resume monitoring',
-											textAlign: TextAlign.center,
-											style: TextStyle(
-												color: state.error != null
-														? const Color(0xFFB91C1C)
-														: const Color(0xFF4B5563),
-												fontSize: 14,
-											),
-										),
-										const SizedBox(height: 16),
-										Text(
-											state.lastDecibel == null
-													? (state.isModelReady
-															? 'Model ready'
-															: 'Loading noise model...')
-													// Live dB result rendered here from controller uiState.
-													: 'Current level: ${state.lastDecibel!.toStringAsFixed(1)} dB',
-											style: const TextStyle(
-												color: Color(0xFF6B7280),
-												fontSize: 13,
-											),
-										),
-										const SizedBox(height: 8),
-										Text(
-											state.lastLabel == null
-													? 'Detected sound: -'
-													: 'Detected sound: ${state.lastLabel}',
-											style: const TextStyle(
-												color: Color(0xFF374151),
-												fontSize: 13,
-											),
-										),
-									],
-								),
-							),
+								const SizedBox(height: ModuleBottomSheet.collapsedHeight),
+							],
 						),
 						ModuleBottomSheet(
 							title: 'Noise Result',
@@ -249,7 +254,7 @@ class _NoiseDetectionHostState extends State<NoiseDetectionHost> {
 												'No noise result yet',
 												style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
 											),
-										)
+									)
 									: Container(
 											width: double.infinity,
 											margin: const EdgeInsets.only(bottom: 10),

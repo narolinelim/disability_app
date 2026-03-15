@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
@@ -45,6 +46,8 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   Timer? _countdownTimer;
   Timer? _captureTimer;
+  CameraController? _cameraController;
+  late Future<CameraController?> _cameraFuture;
 
   DateTime? _steadySince;
   double? _lastMagnitude;
@@ -62,6 +65,9 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   void initState() {
     super.initState();
     _accelerometerSubscription = accelerometerEventStream().listen(_onMotion);
+    _cameraFuture = _isCurrentScreenActive
+        ? _initializeCamera()
+        : Future<CameraController?>.value(null);
     if (_isCurrentScreenActive) {
       _armCountdownAfterScreenAnnouncement();
     }
@@ -75,9 +81,16 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
     final becameInactive =
         oldWidget.selectedIndex == _screenIndex && !_isCurrentScreenActive;
     if (becameActive) {
+      setState(() {
+        _cameraFuture = _initializeCamera();
+      });
       _armCountdownAfterScreenAnnouncement();
     }
     if (becameInactive) {
+      setState(() {
+        _cameraFuture = Future<CameraController?>.value(null);
+      });
+      unawaited(_disposeCamera());
       _stopDetectionFlowOnExit();
     }
   }
@@ -87,7 +100,48 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
     _accelerometerSubscription?.cancel();
     _countdownTimer?.cancel();
     _captureTimer?.cancel();
+    unawaited(_disposeCamera());
     super.dispose();
+  }
+
+  Future<CameraController?> _initializeCamera() async {
+    final cameras = await availableCameras();
+    if (cameras.isEmpty) {
+      throw StateError('No camera available');
+    }
+
+    final selectedCamera = cameras.firstWhere(
+      (camera) => camera.lensDirection == CameraLensDirection.back,
+      orElse: () => cameras.first,
+    );
+
+    final controller = CameraController(
+      selectedCamera,
+      ResolutionPreset.medium,
+      enableAudio: false,
+    );
+    await controller.initialize();
+
+    if (!mounted || !_isCurrentScreenActive) {
+      await controller.dispose();
+      return null;
+    }
+
+    final previous = _cameraController;
+    _cameraController = controller;
+    if (previous != null && previous != controller) {
+      await previous.dispose();
+    }
+
+    return controller;
+  }
+
+  Future<void> _disposeCamera() async {
+    final controller = _cameraController;
+    _cameraController = null;
+    if (controller != null) {
+      await controller.dispose();
+    }
   }
 
   void _onMotion(AccelerometerEvent event) {
@@ -318,99 +372,123 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CameraFeedCard(
-                          label: 'Point camera at item',
-                          accent: Color(0xFF3B82F6),
-                          showPlaceholder: !_isCountingDown,
-                        ),
-                        Container(
-                          color: Colors.black.withValues(alpha: 0.18),
-                          alignment: Alignment.center,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (showCountdown)
-                                Container(
-                                  width: 92,
-                                  height: 92,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 12,
-                                        offset: Offset(0, 5),
+                    child: FutureBuilder<CameraController?>(
+                      future: _cameraFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) {
+                          return const CameraFeedCard(
+                            label: 'Preparing camera...',
+                            accent: Color(0xFF3B82F6),
+                          );
+                        }
+
+                        if (snapshot.hasError) {
+                          return CameraFeedCard(
+                            label: 'Camera error: ${snapshot.error}',
+                            accent: const Color(0xFFEF4444),
+                          );
+                        }
+
+                        final cameraController = snapshot.data;
+                        if (cameraController == null ||
+                            !cameraController.value.isInitialized) {
+                          return const CameraFeedCard(
+                            label: 'Camera paused',
+                            accent: Color(0xFF6B7280),
+                          );
+                        }
+
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CameraPreview(cameraController),
+                            Container(
+                              color: Colors.black.withValues(alpha: 0.18),
+                              alignment: Alignment.center,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (showCountdown)
+                                    Container(
+                                      width: 92,
+                                      height: 92,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Colors.black26,
+                                            blurRadius: 12,
+                                            offset: Offset(0, 5),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                  child: Text(
-                                    '$_secondsRemaining',
-                                    style: const TextStyle(
-                                      color: Color(0xFF16A34A),
-                                      fontSize: 44,
-                                      fontWeight: FontWeight.w700,
+                                      child: Text(
+                                        '$_secondsRemaining',
+                                        style: const TextStyle(
+                                          color: Color(0xFF16A34A),
+                                          fontSize: 44,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    )
+                                  else if (_isCapturing)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 22,
+                                        vertical: 14,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                          SizedBox(width: 12),
+                                          Text(
+                                            'Capturing...',
+                                            style: TextStyle(
+                                              color: Color(0xFF1F2937),
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  const SizedBox(height: 14),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.55),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      statusText,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
                                     ),
                                   ),
-                                )
-                              else if (_isCapturing)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 22,
-                                    vertical: 14,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                      SizedBox(width: 12),
-                                      Text(
-                                        'Capturing...',
-                                        style: TextStyle(
-                                          color: Color(0xFF1F2937),
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              const SizedBox(height: 14),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.55),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  statusText,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
