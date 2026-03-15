@@ -52,4 +52,3 @@ app.*.map.json
 /android/app/src/main/res/values/colors.xml
 /ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
 /ios/Runner/Assets.xcassets/AppIcon.appiconset/*.png
-/assets/images/sensebridge-app-icon.png
