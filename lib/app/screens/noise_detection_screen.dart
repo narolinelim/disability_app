@@ -50,6 +50,7 @@ class _NoiseDetectionScreenState
     _initModel();
   }
 
+  // loading model and mapping table
   Future<void> _initModel() async {
     try {
 
@@ -77,6 +78,7 @@ class _NoiseDetectionScreenState
 
   }
 
+  // start recording
   void _startListening() {
 
     if (!_modelReady) {
@@ -86,9 +88,8 @@ class _NoiseDetectionScreenState
 
     print("Start listening");
 
+    // sliding window
     _audioService.start((samples) {
-      // print(samples.take(10));
-
 
       _buffer.addSamples(samples);
 
@@ -116,21 +117,23 @@ class _NoiseDetectionScreenState
 
           recentResults.add(lowerLabel);
 
+          // choose the most recent 5 results and the size of sliding window is 1, if there are >= 3 times of certain sound, it'll be recognized as the real detection rather than a false detection
           if (recentResults.length > 5) {
             recentResults.removeAt(0);
           }
 
           int alarmCount = recentResults.where((e) =>
-          e.contains("alarm") || e.contains("static")).length;
+          e.contains("alarm") || e.contains("gunshot")).length;
 
           if (alarmCount >= 3) {
 
             setState(() {
-              detectedText = "🚨 Fire Alarm Detected!";
+              detectedText = "🚨 Fire Alarm Detected! Please evacuate immediately!";
             });
 
             final now = DateTime.now();
 
+            // vibration will only be performed once in each 5 seconds
             if (_lastVibrationTime == null ||
                 now.difference(_lastVibrationTime!).inSeconds > 5) {
 
@@ -143,9 +146,7 @@ class _NoiseDetectionScreenState
 
           }
 
-
         }
-
 
       }
 
@@ -153,6 +154,7 @@ class _NoiseDetectionScreenState
 
   }
 
+  // stop recording
   void _stopListening() {
 
     print("Stop listening");

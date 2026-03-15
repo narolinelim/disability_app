@@ -8,6 +8,7 @@ class AudioStreamService {
 
   StreamSubscription<Uint8List>? _subscription;
 
+ // start recording and convert data into certain format(float32)
   Future<void> start(Function(List<double>) onAudioData) async {
 
     if (await _recorder.hasPermission()) {
@@ -21,6 +22,7 @@ class AudioStreamService {
       );
 
       _subscription = stream.listen((data) {
+        // print(data.length);2048
 
         final samples = _convertToFloat32(data);
 
@@ -36,6 +38,7 @@ class AudioStreamService {
 
   }
 
+  // stop recording
   Future<void> stop() async {
 
     await _subscription?.cancel();
@@ -44,6 +47,7 @@ class AudioStreamService {
 
   }
 
+  //function to convert data to float32
   List<double> _convertToFloat32(Uint8List data) {
 
     final int16Buffer = Int16List.view(data.buffer);

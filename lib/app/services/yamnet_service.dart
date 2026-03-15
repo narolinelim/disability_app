@@ -4,16 +4,14 @@ class YamnetService {
 
   late Interpreter _interpreter;
 
+  // load yamnet model
   Future<void> loadModel() async {
 
     _interpreter = await Interpreter.fromAsset("assets/models/1.tflite");
-    // Interpreter.fromAsset(
-    //   "1.tflite",
-    //   options: InterpreterOptions()..threads = 2,
-    // );
 
   }
 
+  // run model with input data, for example, output would be [0.21,0.42,0.63...], they are possibilities of each sound
   List<double> runInference(List<double> input) {
 
     var inputTensor = [input];
@@ -28,6 +26,7 @@ class YamnetService {
 
   }
 
+  // choose the maximum one within scores
   int argmax(List<double> scores) {
 
     double max = scores[0];

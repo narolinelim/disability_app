@@ -3,6 +3,7 @@ import 'package:csv/csv.dart';
 
 class LabelLoader {
 
+  // load label table (sound to name mapping table), for example: labels[1] = "vehicle", labels = ["dog", "cat", "fire_alarm"...]
   static Future<Map<int, String>> loadLabels() async {
 
     final raw = await rootBundle.loadString(
