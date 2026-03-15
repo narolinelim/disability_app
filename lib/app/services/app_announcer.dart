@@ -21,6 +21,8 @@ class AppAnnouncer {
   String? _lastTtsError;
   List<String> _engineNames = <String>[];
   int _engineCursor = 0;
+  DateTime? _lastObstacleAnnouncementAt;
+  String? _lastObstacleAnnouncementText;
   final ValueNotifier<bool> _enabledNotifier = ValueNotifier<bool>(true);
 
   ValueListenable<bool> get enabledListenable => _enabledNotifier;
@@ -208,5 +210,70 @@ class AppAnnouncer {
     }
     await SystemSound.play(SystemSoundType.click);
     await speak('$value');
+  }
+
+  Future<void> announceDetectedObjects(
+    List<String> objectLabels, {
+    required double proximityScore,
+    Duration minInterval = const Duration(seconds: 2),
+  }) async {
+    if (objectLabels.isEmpty) {
+      return;
+    }
+
+    final cleanedLabels = objectLabels
+        .map((label) => _extractObjectName(label))
+        .where((label) => label.isNotEmpty)
+        .toSet()
+        .toList();
+
+    if (cleanedLabels.isEmpty) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final proximityText = _proximityToSpeech(proximityScore);
+    final objectText = cleanedLabels.length == 1
+        ? cleanedLabels.first
+        : '${cleanedLabels.take(2).join(' and ')}${cleanedLabels.length > 2 ? ' and more' : ''}';
+    final speechText = '$objectText detected, $proximityText';
+
+    if (_lastObstacleAnnouncementText == speechText &&
+        _lastObstacleAnnouncementAt != null &&
+        now.difference(_lastObstacleAnnouncementAt!) < minInterval) {
+      return;
+    }
+
+    _lastObstacleAnnouncementText = speechText;
+    _lastObstacleAnnouncementAt = now;
+
+    await speak(speechText, interrupt: false);
+  }
+
+  String _extractObjectName(String label) {
+    final trimmed = label.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+
+    final confidenceStart = trimmed.lastIndexOf(RegExp(r'\s\d'));
+    if (confidenceStart <= 0) {
+      return trimmed;
+    }
+
+    return trimmed.substring(0, confidenceStart).trim();
+  }
+
+  String _proximityToSpeech(double proximityScore) {
+    if (proximityScore >= 0.75) {
+      return 'very close';
+    }
+    if (proximityScore >= 0.50) {
+      return 'close';
+    }
+    if (proximityScore >= 0.25) {
+      return 'at medium distance';
+    }
+    return 'far away';
   }
 }
