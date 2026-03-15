@@ -27,12 +27,18 @@ migrate_working_dir/
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
+**/GeneratedPluginRegistrant.*
+**/generated_plugin_registrant.*
 .dart_tool/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
 /coverage/
+**/ios/**/GeneratedPluginRegistrant.h
+**/ios/**/GeneratedPluginRegistrant.m
+**/generated_plugins.cmake
+
 
 # Symbolication related
 app.*.symbols
@@ -46,3 +52,12 @@ app.*.map.json
 /android/app/release
 
 /venv
+
+# Generated launcher icons (managed by flutter_launcher_icons)
+/android/app/src/main/res/mipmap-*/ic_launcher.png
+#/android/app/src/main/res/drawable-*/ic_launcher_foreground.png
+/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+#/android/app/src/main/res/values/colors.xml
+#/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+#/ios/Runner/Assets.xcassets/AppIcon.appiconset/*.png

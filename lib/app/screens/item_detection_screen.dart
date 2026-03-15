@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
+import '../services/app_announcer.dart';
 import '../widgets/app_navigation_bar.dart';
 import '../widgets/camera_feed_card.dart';
 import '../widgets/module_bottom_sheet.dart';
@@ -24,27 +26,73 @@ class ItemDetectionScreen extends StatefulWidget {
 }
 
 class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
+  static const _screenIndex = 1;
+  static const _initialCountdownSeconds = 3;
   static const _gravity = 9.81;
   static const _movementThreshold = 1.05;
   static const _jerkThreshold = 0.95;
+  static const _steadyBeforeCountdown = Duration(milliseconds: 450);
+  static const _screenAnnounceBuffer = Duration(milliseconds: 2400);
+  static const _captureProcessingDelay = Duration(milliseconds: 1200);
+  static const _steadyInstruction = 'Keep camera steady for 3 seconds.';
+  static const _movingInstruction = 'Phone is moving. Hold camera steady.';
+  static const _capturingInstruction = 'Capturing image now.';
+  static const _captureDoneInstruction =
+      'Capture complete. Waiting for analysis.';
+  static const _waitingForAnalysisText =
+      'Captured. Waiting for analysis result...';
+  static const _noItemDetectedText = 'No item detected yet';
 
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   Timer? _countdownTimer;
   Timer? _captureTimer;
+  CameraController? _cameraController;
+  late Future<CameraController?> _cameraFuture;
 
   DateTime? _steadySince;
   double? _lastMagnitude;
 
   bool _isMoving = true;
+  bool _isPreparingCountdown = false;
   bool _isCountingDown = false;
   bool _isCapturing = false;
-  int _secondsRemaining = 3;
-  String _detectedItemText = 'No item detected yet';
+  bool _isSheetLevel3 = false;
+  int _secondsRemaining = _initialCountdownSeconds;
+  String _detectedItemText = _noItemDetectedText;
+  DateTime _countdownAllowedAfter = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
     super.initState();
     _accelerometerSubscription = accelerometerEventStream().listen(_onMotion);
+    _cameraFuture = _isCurrentScreenActive
+        ? _initializeCamera()
+        : Future<CameraController?>.value(null);
+    if (_isCurrentScreenActive) {
+      _armCountdownAfterScreenAnnouncement();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ItemDetectionScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final becameActive =
+        oldWidget.selectedIndex != _screenIndex && _isCurrentScreenActive;
+    final becameInactive =
+        oldWidget.selectedIndex == _screenIndex && !_isCurrentScreenActive;
+    if (becameActive) {
+      setState(() {
+        _cameraFuture = _initializeCamera();
+      });
+      _armCountdownAfterScreenAnnouncement();
+    }
+    if (becameInactive) {
+      setState(() {
+        _cameraFuture = Future<CameraController?>.value(null);
+      });
+      unawaited(_disposeCamera());
+      _stopDetectionFlowOnExit();
+    }
   }
 
   @override
@@ -52,11 +100,52 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
     _accelerometerSubscription?.cancel();
     _countdownTimer?.cancel();
     _captureTimer?.cancel();
+    unawaited(_disposeCamera());
     super.dispose();
   }
 
+  Future<CameraController?> _initializeCamera() async {
+    final cameras = await availableCameras();
+    if (cameras.isEmpty) {
+      throw StateError('No camera available');
+    }
+
+    final selectedCamera = cameras.firstWhere(
+      (camera) => camera.lensDirection == CameraLensDirection.back,
+      orElse: () => cameras.first,
+    );
+
+    final controller = CameraController(
+      selectedCamera,
+      ResolutionPreset.medium,
+      enableAudio: false,
+    );
+    await controller.initialize();
+
+    if (!mounted || !_isCurrentScreenActive) {
+      await controller.dispose();
+      return null;
+    }
+
+    final previous = _cameraController;
+    _cameraController = controller;
+    if (previous != null && previous != controller) {
+      await previous.dispose();
+    }
+
+    return controller;
+  }
+
+  Future<void> _disposeCamera() async {
+    final controller = _cameraController;
+    _cameraController = null;
+    if (controller != null) {
+      await controller.dispose();
+    }
+  }
+
   void _onMotion(AccelerometerEvent event) {
-    if (!mounted || _isCapturing) {
+    if (!mounted || _isCapturing || _isSheetLevel3 || !_isCurrentScreenActive) {
       return;
     }
 
@@ -73,11 +162,12 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
 
     if (moving) {
       _steadySince = null;
-      if (!_isMoving || _isCountingDown) {
+      if (!_isMoving || _isCountingDown || _isPreparingCountdown) {
         _resetCountdown();
         setState(() {
           _isMoving = true;
         });
+        AppAnnouncer.instance.speak(_movingInstruction, interrupt: false);
       }
       return;
     }
@@ -90,20 +180,79 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
       });
     }
 
+    if (_isCountdownBlockedByAnnouncement) {
+      return;
+    }
+
     final steadyDuration = DateTime.now().difference(_steadySince!);
     if (!_isCountingDown &&
-        steadyDuration >= const Duration(milliseconds: 450)) {
+        !_isPreparingCountdown &&
+        steadyDuration >= _steadyBeforeCountdown) {
       _startAutoCaptureCountdown();
     }
   }
 
-  void _startAutoCaptureCountdown() {
+  bool get _isCurrentScreenActive => widget.selectedIndex == _screenIndex;
+
+  bool get _isCountdownBlockedByAnnouncement =>
+      DateTime.now().isBefore(_countdownAllowedAfter);
+
+  void _armCountdownAfterScreenAnnouncement() {
+    _countdownAllowedAfter = DateTime.now().add(_screenAnnounceBuffer);
+    _steadySince = null;
+    _countdownTimer?.cancel();
+    setState(() {
+      _isMoving = true;
+      _isCountingDown = false;
+      _secondsRemaining = _initialCountdownSeconds;
+    });
+  }
+
+  void _stopDetectionFlowOnExit() {
+    _countdownTimer?.cancel();
+    _captureTimer?.cancel();
+    _steadySince = null;
+    setState(() {
+      _isMoving = true;
+      _isPreparingCountdown = false;
+      _isCountingDown = false;
+      _isCapturing = false;
+      _secondsRemaining = _initialCountdownSeconds;
+    });
+  }
+
+  Future<void> _startAutoCaptureCountdown() async {
+    if (_isCountingDown ||
+        _isPreparingCountdown ||
+        _isCapturing ||
+        _isSheetLevel3) {
+      return;
+    }
+
     _countdownTimer?.cancel();
 
     setState(() {
-      _isCountingDown = true;
-      _secondsRemaining = 3;
+      _isPreparingCountdown = true;
+      _isCountingDown = false;
+      _secondsRemaining = _initialCountdownSeconds;
     });
+    await AppAnnouncer.instance.speak(_steadyInstruction);
+
+    if (!mounted || _isMoving || _isCapturing || _isSheetLevel3) {
+      setState(() {
+        _isPreparingCountdown = false;
+        _isCountingDown = false;
+        _secondsRemaining = _initialCountdownSeconds;
+      });
+      return;
+    }
+
+    setState(() {
+      _isPreparingCountdown = false;
+      _isCountingDown = true;
+      _secondsRemaining = _initialCountdownSeconds;
+    });
+    await AppAnnouncer.instance.announceCountdownNumber(_secondsRemaining);
 
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -115,6 +264,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
         setState(() {
           _secondsRemaining -= 1;
         });
+        AppAnnouncer.instance.announceCountdownNumber(_secondsRemaining);
         return;
       }
 
@@ -124,16 +274,21 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
   }
 
   void _captureImage() {
+    if (_isSheetLevel3) {
+      _resetCountdown();
+      return;
+    }
     _countdownTimer?.cancel();
 
     setState(() {
       _isCountingDown = false;
       _isCapturing = true;
-      _detectedItemText = 'Captured. Waiting for analysis result...';
+      _detectedItemText = _waitingForAnalysisText;
     });
+    AppAnnouncer.instance.speak(_capturingInstruction);
 
     _captureTimer?.cancel();
-    _captureTimer = Timer(const Duration(milliseconds: 1200), () {
+    _captureTimer = Timer(_captureProcessingDelay, () {
       if (!mounted) {
         return;
       }
@@ -142,21 +297,60 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
         _isMoving = true;
         _steadySince = null;
       });
+      AppAnnouncer.instance.speak(_captureDoneInstruction);
     });
   }
 
   void _resetCountdown() {
     _countdownTimer?.cancel();
     setState(() {
+      _isPreparingCountdown = false;
       _isCountingDown = false;
-      _secondsRemaining = 3;
+      _secondsRemaining = _initialCountdownSeconds;
+    });
+  }
+
+  void _onSheetLevelChanged(int level) {
+    final isLevel3 = level == 3;
+    if (_isSheetLevel3 == isLevel3 || !mounted) {
+      return;
+    }
+
+    if (isLevel3) {
+      _countdownTimer?.cancel();
+      _captureTimer?.cancel();
+      setState(() {
+        _isSheetLevel3 = true;
+        _isMoving = true;
+        _isPreparingCountdown = false;
+        _isCountingDown = false;
+        _isCapturing = false;
+        _secondsRemaining = _initialCountdownSeconds;
+        _steadySince = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSheetLevel3 = false;
+      _isMoving = true;
+      _steadySince = null;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasDetectedResult =
+        _detectedItemText != _noItemDetectedText &&
+        _detectedItemText != _waitingForAnalysisText;
     final showCountdown = _isCountingDown && !_isCapturing;
-    final statusText = showCountdown
+    final statusText = _isCountdownBlockedByAnnouncement
+        ? 'Item detection ready. Listen for instructions.'
+        : _isSheetLevel3
+        ? 'Camera paused while panel is fully expanded.'
+        : _isPreparingCountdown
+        ? 'Keep phone steady. Countdown starts soon.'
+        : showCountdown
         ? 'Keep phone steady for $_secondsRemaining s'
         : (_isMoving
               ? 'Hold phone steady to start auto capture'
@@ -167,131 +361,163 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen> {
       body: SafeArea(
         top: false,
         bottom: false,
-        child: Column(
+        child: Stack(
           children: [
-            const ModuleHeader(
-              title: 'Item Detection',
-              accent: Color(0xFF16A34A),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CameraFeedCard(
-                      label: 'Point camera at item',
-                      accent: Color(0xFF3B82F6),
-                      showPlaceholder: !_isCountingDown,
-                    ),
-                    Container(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (showCountdown)
+            Column(
+              children: [
+                const ModuleHeader(
+                  title: 'Item Detection',
+                  accent: Color(0xFF16A34A),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: FutureBuilder<CameraController?>(
+                      future: _cameraFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) {
+                          return const CameraFeedCard(
+                            label: 'Preparing camera...',
+                            accent: Color(0xFF3B82F6),
+                          );
+                        }
+
+                        if (snapshot.hasError) {
+                          return CameraFeedCard(
+                            label: 'Camera error: ${snapshot.error}',
+                            accent: const Color(0xFFEF4444),
+                          );
+                        }
+
+                        final cameraController = snapshot.data;
+                        if (cameraController == null ||
+                            !cameraController.value.isInitialized) {
+                          return const CameraFeedCard(
+                            label: 'Camera paused',
+                            accent: Color(0xFF6B7280),
+                          );
+                        }
+
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CameraPreview(cameraController),
                             Container(
-                              width: 92,
-                              height: 92,
+                              color: Colors.black.withValues(alpha: 0.18),
                               alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black26,
-                                    blurRadius: 12,
-                                    offset: Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                '$_secondsRemaining',
-                                style: const TextStyle(
-                                  color: Color(0xFF16A34A),
-                                  fontSize: 44,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            )
-                          else if (_isCapturing)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 22,
-                                vertical: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Row(
+                              child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                                  if (showCountdown)
+                                    Container(
+                                      width: 92,
+                                      height: 92,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Colors.black26,
+                                            blurRadius: 12,
+                                            offset: Offset(0, 5),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Text(
+                                        '$_secondsRemaining',
+                                        style: const TextStyle(
+                                          color: Color(0xFF16A34A),
+                                          fontSize: 44,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    )
+                                  else if (_isCapturing)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 22,
+                                        vertical: 14,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                          SizedBox(width: 12),
+                                          Text(
+                                            'Capturing...',
+                                            style: TextStyle(
+                                              color: Color(0xFF1F2937),
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'Capturing...',
-                                    style: TextStyle(
-                                      color: Color(0xFF1F2937),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
+                                  const SizedBox(height: 14),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.55),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      statusText,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          const SizedBox(height: 14),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.55),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              statusText,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        );
+                      },
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: ModuleBottomSheet.collapsedHeight),
+              ],
             ),
             ModuleBottomSheet(
               title: 'Detected Item',
               accent: const Color(0xFFBBF7D0),
-              hasData: _detectedItemText != 'No item detected yet',
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFBBF7D0)),
-                ),
-                child: Text(
-                  _detectedItemText,
-                  style: const TextStyle(
-                    color: Color(0xFF1F2937),
-                    fontSize: 14,
-                  ),
-                ),
-              ),
+              hasData: hasDetectedResult,
+              onLevelChanged: _onSheetLevelChanged,
+              child: hasDetectedResult
+                  ? Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
+                      ),
+                      child: Text(
+                        _detectedItemText,
+                        style: const TextStyle(
+                          color: Color(0xFF1F2937),
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
           ],
         ),

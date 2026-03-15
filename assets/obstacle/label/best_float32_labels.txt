@@ -1,0 +1,7 @@
+auto or goodsauto
+bike
+bus
+car
+cow
+dog
+lorry
