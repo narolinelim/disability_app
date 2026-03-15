@@ -24,7 +24,12 @@ class SoundClassifier {
       return null;
     }
 
-    final input = [buffer];
+    final inputTensor = interpreter.getInputTensor(0);
+    final shape = inputTensor.shape;
+    final Object input =
+        shape.length == 1 && shape[0] == NoiseDetectionConfig.modelInputSamples
+            ? buffer
+            : <List<double>>[buffer];
     final output = List.generate(
       1,
       (_) => List<double>.filled(NoiseDetectionConfig.modelOutputClasses, 0.0),

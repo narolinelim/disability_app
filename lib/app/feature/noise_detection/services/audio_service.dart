@@ -35,6 +35,49 @@ class AudioService {
   Stream<NoiseFrameResult> get resultsStream => _resultsController.stream;
   bool get isRecording => _isRecording;
 
+  RecordConfig _pythonLikeCaptureConfig() {
+    // Build a RecordConfig that approximates Python sounddevice InputStream behavior.
+    return const RecordConfig(
+      // Request raw PCM frames so Flutter receives short integer audio samples.
+      encoder: AudioEncoder.pcm16bits,
+      // Match Python SAMPLE_RATE=16000 for model-compatible timing/frequency content.
+      sampleRate: NoiseDetectionConfig.sampleRate,
+      // Match Python CHANNELS=1 to keep mono input parity.
+      numChannels: 1,
+      // Match Python blocksize to one full model window (15600 samples ~= 0.975s).
+      streamBufferSize: NoiseDetectionConfig.modelInputSamples,
+      // Disable automatic gain control so amplitude is not auto-scaled by the recorder.
+      autoGain: false,
+      // Disable acoustic echo cancellation to avoid capture-side DSP differences.
+      echoCancel: false,
+      // Disable noise suppression so captured waveform stays closer to raw microphone input.
+      noiseSuppress: false,
+      // Android-specific tuning to request the least processed microphone source.
+      androidConfig: AndroidRecordConfig(
+        // Prefer unprocessed source (closest to raw capture; may not be available on all devices).
+        audioSource: AndroidAudioSource.unprocessed,
+        // Keep normal audio mode to avoid voice-call processing paths.
+        audioManagerMode: AudioManagerMode.modeNormal,
+        // Avoid Bluetooth routing changes that can alter microphone profile/quality.
+        manageBluetooth: false,
+        // Keep speakerphone off to avoid route changes that can impact AEC behavior.
+        speakerphone: false,
+      ),
+    );
+  }
+
+  RecordConfig _fallbackCaptureConfig() {
+    return const RecordConfig(
+      encoder: AudioEncoder.pcm16bits,
+      sampleRate: NoiseDetectionConfig.sampleRate,
+      numChannels: 1,
+      streamBufferSize: NoiseDetectionConfig.modelInputSamples,
+      autoGain: false,
+      echoCancel: false,
+      noiseSuppress: false,
+    );
+  }
+
   // Starts streaming audio
   Future<void> startRecording() async {
     if (_isDisposed || _isRecording) {
@@ -45,13 +88,13 @@ class AudioService {
       throw StateError('Microphone permission denied');
     }
 
-    final stream = await _recorder.startStream(
-      const RecordConfig(
-        encoder: AudioEncoder.pcm16bits,
-        sampleRate: NoiseDetectionConfig.sampleRate,
-        numChannels: 1,
-      ),
-    );
+    Stream<Uint8List> stream;
+    try {
+      stream = await _recorder.startStream(_pythonLikeCaptureConfig());
+    } catch (_) {
+      // Some devices do not support unprocessed source; keep other parity settings.
+      stream = await _recorder.startStream(_fallbackCaptureConfig());
+    }
 
     _isRecording = true;
 
@@ -95,7 +138,7 @@ class AudioService {
       }
 
       _lastPredictionAt = now;
-      final prediction = _classifier.classify(window);
+  final prediction = _classifier.classify(_peakNormalize(window));
 
       if (!_resultsController.isClosed) {
         _resultsController.add(
@@ -109,6 +152,22 @@ class AudioService {
       }
     }
 
+  }
+
+  List<double> _peakNormalize(List<double> buffer) {
+    double maxAbs = 0;
+    for (final sample in buffer) {
+      final abs = sample < 0 ? -sample : sample;
+      if (abs > maxAbs) {
+        maxAbs = abs;
+      }
+    }
+
+    if (maxAbs <= 0) {
+      return buffer;
+    }
+
+    return buffer.map((sample) => sample / maxAbs).toList(growable: false);
   }
 
   Future<void> stopRecording() async {

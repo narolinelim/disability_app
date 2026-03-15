@@ -14,7 +14,7 @@ class NoiseDetectionConfig {
 	static const int sampleRate = 16000;
 	static const int modelInputSamples = 15600;
 	static const int modelOutputClasses = 521;
-	static const int hopSamples = 7800;
+	static const int hopSamples = 15600;
 
 	static const double confidenceThreshold = 0.25;
 	static const double alertDecibelThreshold = 55.0;
