@@ -6,7 +6,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class CloudImageDescriber {
-  static const String _apiKey = String.fromEnvironment('OPENAI_API_KEY');
+  static const String _apiKey = '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';
   static const String _model = String.fromEnvironment(
     'OPENAI_VISION_MODEL',
     defaultValue: 'gpt-4.1-mini',

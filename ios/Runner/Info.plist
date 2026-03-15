@@ -28,6 +28,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>SenseBridge uses the camera to describe nearby items.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SenseBridge requires microphone access to record your questions about detected items.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>SenseBridge uses speech recognition to convert your questions into text for the AI.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

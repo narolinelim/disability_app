@@ -1,12 +1,14 @@
 import 'dart:async';
-import 'dart:math' as math;
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:sensors_plus/sensors_plus.dart';
+import 'package:flutter/services.dart';
 
 import '../services/app_announcer.dart';
+import '../services/audio_recorder_service.dart';
 import '../services/cloud_image_describer.dart';
+import '../services/openai_conversation_service.dart';
 import '../widgets/app_navigation_bar.dart';
 import '../widgets/camera_feed_card.dart';
 import '../widgets/module_bottom_sheet.dart';
@@ -30,13 +32,6 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
     with WidgetsBindingObserver {
   static const _screenIndex = 1;
   static const _initialCountdownSeconds = 3;
-  static const _gravity = 9.81;
-  static const _movementThreshold = 1.05;
-  static const _jerkThreshold = 0.95;
-  static const _steadyBeforeCountdown = Duration(milliseconds: 450);
-  static const _screenAnnounceBuffer = Duration(milliseconds: 2400);
-  static const _steadyInstruction = 'Keep camera steady for 3 seconds.';
-  static const _movingInstruction = 'Phone is moving. Hold camera steady.';
   static const _capturingInstruction = 'Capturing image now.';
   static const _waitingForAnalysisText = 'Captured. Analyzing image...';
   static const _noItemDetectedText = 'No item detected yet';
@@ -45,35 +40,37 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
   static const _cameraNotReadyText = 'Camera is not ready yet.';
 
   final CloudImageDescriber _cloudImageDescriber = CloudImageDescriber();
+  final AudioRecorderService _audioRecorder = AudioRecorderService.instance;
+  final OpenAIConversationService _conversationService =
+      OpenAIConversationService();
 
-  StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
+
   Timer? _countdownTimer;
+  Timer? _recordingTimer;
 
   CameraController? _cameraController;
   bool _isInitializingCamera = false;
   bool _isCameraReady = false;
 
-  DateTime? _steadySince;
-  double? _lastMagnitude;
 
-  bool _isMoving = true;
-  bool _isPreparingCountdown = false;
   bool _isCountingDown = false;
   bool _isCapturing = false;
   bool _isAnnouncingResult = false;
+  bool _isRecording = false;
+  bool _isProcessingAudio = false;
+  bool _hasAutoCaptured = false;
   int _secondsRemaining = _initialCountdownSeconds;
+  int _recordingSeconds = 0;
   String _detectedItemText = _noItemDetectedText;
-  DateTime _countdownAllowedAfter = DateTime.fromMillisecondsSinceEpoch(0);
+  String _conversationText = '';
+  List<Map<String, String>> _conversationHistory = [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeCamera();
-    _accelerometerSubscription = accelerometerEventStream().listen(_onMotion);
-    if (_isCurrentScreenActive) {
-      _armCountdownAfterScreenAnnouncement();
-    }
+    _audioRecorder.initialize();
   }
 
   @override
@@ -84,7 +81,6 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
     final becameInactive =
         oldWidget.selectedIndex == _screenIndex && !_isCurrentScreenActive;
     if (becameActive) {
-      _armCountdownAfterScreenAnnouncement();
       _initializeCamera();
     }
     if (becameInactive) {
@@ -108,8 +104,9 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _accelerometerSubscription?.cancel();
     _countdownTimer?.cancel();
+    _recordingTimer?.cancel();
+    _audioRecorder.dispose();
     _disposeCamera();
     super.dispose();
   }
@@ -166,6 +163,10 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
       setState(() {
         _isCameraReady = true;
       });
+      // Start 3-second countdown immediately after camera is ready
+      if (!_hasAutoCaptured && _isCurrentScreenActive) {
+        _startDirectCountdown();
+      }
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -187,126 +188,23 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
     }
   }
 
-  void _onMotion(AccelerometerEvent event) {
-    if (!mounted ||
-        _isCapturing ||
-        _isAnnouncingResult ||
-        !_isCurrentScreenActive ||
-        !_isCameraReady) {
-      return;
-    }
-
-    final magnitude = math.sqrt(
-      event.x * event.x + event.y * event.y + event.z * event.z,
-    );
-    final gravityDelta = (magnitude - _gravity).abs();
-    final jerk = _lastMagnitude == null
-        ? 0.0
-        : (magnitude - _lastMagnitude!).abs();
-    _lastMagnitude = magnitude;
-
-    final moving = gravityDelta > _movementThreshold || jerk > _jerkThreshold;
-
-    if (moving) {
-      _steadySince = null;
-      if (!_isMoving || _isCountingDown || _isPreparingCountdown) {
-        _resetCountdown();
-        setState(() {
-          _isMoving = true;
-        });
-        AppAnnouncer.instance.speak(_movingInstruction, interrupt: false);
-      }
-      return;
-    }
-
-    _steadySince ??= DateTime.now();
-
-    if (_isMoving && !_isCountingDown) {
-      setState(() {
-        _isMoving = false;
-      });
-    }
-
-    if (_isCountdownBlockedByAnnouncement) {
-      return;
-    }
-
-    final steadyDuration = DateTime.now().difference(_steadySince!);
-    if (!_isCountingDown &&
-        !_isPreparingCountdown &&
-        steadyDuration >= _steadyBeforeCountdown) {
-      _startAutoCaptureCountdown();
-    }
-  }
-
   bool get _isCurrentScreenActive => widget.selectedIndex == _screenIndex;
 
-  bool get _isCountdownBlockedByAnnouncement =>
-      DateTime.now().isBefore(_countdownAllowedAfter);
-
-  void _armCountdownAfterScreenAnnouncement() {
-    _countdownAllowedAfter = DateTime.now().add(_screenAnnounceBuffer);
-    _steadySince = null;
-    _countdownTimer?.cancel();
-    setState(() {
-      _isMoving = true;
-      _isCountingDown = false;
-      _secondsRemaining = _initialCountdownSeconds;
-    });
-  }
-
-  void _stopDetectionFlowOnExit() {
-    _countdownTimer?.cancel();
-    _steadySince = null;
-    setState(() {
-      _isMoving = true;
-      _isPreparingCountdown = false;
-      _isCountingDown = false;
-      _isCapturing = false;
-      _isAnnouncingResult = false;
-      _secondsRemaining = _initialCountdownSeconds;
-    });
-  }
-
-  Future<void> _startAutoCaptureCountdown() async {
-    if (_isCountingDown ||
-        _isPreparingCountdown ||
-        _isCapturing ||
-        _isAnnouncingResult) {
+  void _startDirectCountdown() {
+    if (_isCountingDown || _isCapturing || _isAnnouncingResult || _hasAutoCaptured) {
       return;
     }
-
     _countdownTimer?.cancel();
-
     setState(() {
-      _isPreparingCountdown = true;
-      _isCountingDown = false;
-      _secondsRemaining = _initialCountdownSeconds;
-    });
-    await AppAnnouncer.instance.speak(_steadyInstruction);
-
-    if (!mounted || _isMoving || _isCapturing || _isAnnouncingResult) {
-      setState(() {
-        _isPreparingCountdown = false;
-        _isCountingDown = false;
-        _secondsRemaining = _initialCountdownSeconds;
-      });
-      return;
-    }
-
-    setState(() {
-      _isPreparingCountdown = false;
       _isCountingDown = true;
       _secondsRemaining = _initialCountdownSeconds;
     });
-    await AppAnnouncer.instance.announceCountdownNumber(_secondsRemaining);
-
+    AppAnnouncer.instance.announceCountdownNumber(_secondsRemaining);
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
-
       if (_secondsRemaining > 1) {
         setState(() {
           _secondsRemaining -= 1;
@@ -314,11 +212,22 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
         AppAnnouncer.instance.announceCountdownNumber(_secondsRemaining);
         return;
       }
-
       timer.cancel();
       _captureAndDescribeImage();
     });
   }
+
+  void _stopDetectionFlowOnExit() {
+    _countdownTimer?.cancel();
+    setState(() {
+      _isCountingDown = false;
+      _isCapturing = false;
+      _isAnnouncingResult = false;
+      _hasAutoCaptured = false;
+      _secondsRemaining = _initialCountdownSeconds;
+    });
+  }
+
 
   Future<void> _captureAndDescribeImage() async {
     if (_isCapturing || !_isCurrentScreenActive) {
@@ -329,6 +238,7 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
     setState(() {
       _isCountingDown = false;
       _isCapturing = true;
+      _hasAutoCaptured = true;
       _detectedItemText = _waitingForAnalysisText;
     });
 
@@ -366,8 +276,6 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
       _detectedItemText = text;
       _isCapturing = false;
       _isAnnouncingResult = true;
-      _isMoving = true;
-      _steadySince = null;
     });
     await AppAnnouncer.instance.speak(text);
     if (!mounted) {
@@ -375,18 +283,146 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
     }
     setState(() {
       _isAnnouncingResult = false;
-      _isMoving = true;
-      _steadySince = null;
     });
   }
 
-  void _resetCountdown() {
-    _countdownTimer?.cancel();
+  void _onScreenTap() {
+    debugPrint('[SB_GENAI] Screen tapped - stopping TTS');
+    AppAnnouncer.instance.stop();
+  }
+
+  Future<void> _onLongPressStart(LongPressStartDetails details) async {
+    if (_detectedItemText == _noItemDetectedText) {
+      AppAnnouncer.instance.speak('No item detected yet. Detect an item first.');
+      return;
+    }
+
+    debugPrint('[SB_GENAI] Long press start detected - stopping TTS and starting recording');
+    // Immediately stop any TTS
+    await AppAnnouncer.instance.stop();
+
     setState(() {
-      _isPreparingCountdown = false;
-      _isCountingDown = false;
-      _secondsRemaining = _initialCountdownSeconds;
+      _isRecording = true;
+      _recordingSeconds = 0;
+      _conversationText = 'Recording...';
     });
+    
+    // Play a low-latency click to indicate recording started
+    await SystemSound.play(SystemSoundType.click);
+
+    final recordingPath = await _audioRecorder.startRecording();
+    if (recordingPath == null) {
+      setState(() {
+        _isRecording = false;
+        _conversationText = 'Failed to start recording. Check permissions.';
+      });
+      AppAnnouncer.instance.speak(_conversationText);
+      return;
+    }
+
+    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _recordingSeconds += 1;
+        });
+      }
+    });
+  }
+
+  Future<void> _onLongPressEnd(LongPressEndDetails details) async {
+    if (!_isRecording) return;
+    await _stopRecording();
+  }
+
+  Future<void> _stopRecording() async {
+    debugPrint('[SB_GENAI] Stopping recording');
+    _recordingTimer?.cancel();
+    
+    setState(() {
+      _isRecording = false;
+      _isProcessingAudio = true;
+      _conversationText = 'Processing your question...';
+    });
+
+    AppAnnouncer.instance.speak('Processing your question.');
+
+    try {
+      // Get the path to the recorded audio file
+      final audioPath = await _audioRecorder.stopRecording();
+      if (audioPath == null || audioPath.isEmpty) {
+        setState(() {
+          _isProcessingAudio = false;
+          _conversationText = 'No audio detected. Try again.';
+        });
+        AppAnnouncer.instance.speak(_conversationText);
+        return;
+      }
+
+      final audioFile = File(audioPath);
+      if (!await audioFile.exists()) {
+         setState(() {
+          _isProcessingAudio = false;
+          _conversationText = 'Failed to read audio file.';
+        });
+        AppAnnouncer.instance.speak(_conversationText);
+        return;
+      }
+
+      final audioBytes = await audioFile.readAsBytes();
+
+      // Transcribe the audio using OpenAI Whisper
+      final userMessage = await _conversationService.transcribeAudio(audioBytes);
+      
+      // Clean up the temporary file
+      try {
+        await audioFile.delete();
+      } catch (_) {}
+
+      if (userMessage == null || userMessage.trim().isEmpty) {
+        setState(() {
+          _isProcessingAudio = false;
+          _conversationText = 'Could not understand what you said. Please try again.';
+        });
+        AppAnnouncer.instance.speak(_conversationText);
+        return;
+      }
+
+      debugPrint('[SB_GENAI] User said: $userMessage');
+
+      // Send conversation to OpenAI
+      final response = await _conversationService.chat(
+        userMessage: userMessage,
+        detectedItem: _detectedItemText,
+        conversationHistory: _conversationHistory,
+      );
+
+      if (response == null || response.isEmpty) {
+        setState(() {
+          _isProcessingAudio = false;
+          _conversationText = 'No response from AI. Try again.';
+        });
+        AppAnnouncer.instance.speak(_conversationText);
+        return;
+      }
+
+      // Update conversation and read response
+      _conversationHistory.add({'role': 'user', 'content': userMessage});
+      _conversationHistory.add({'role': 'assistant', 'content': response});
+
+      setState(() {
+        _isProcessingAudio = false;
+        _conversationText = 'Q: $userMessage\nA: $response';
+      });
+
+      AppAnnouncer.instance.speak(response);
+    } catch (error) {
+      debugPrint('[SB_GENAI] Error: $error');
+      setState(() {
+        _isProcessingAudio = false;
+        _conversationText = 'Error: ${error.toString()}';
+      });
+      AppAnnouncer.instance.speak('An error occurred. ${error.toString()}');
+    }
   }
 
   @override
@@ -395,16 +431,12 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
     final statusText = !_isCameraReady
         ? 'Starting camera...'
         : _isAnnouncingResult
-        ? 'Reading result. Next capture starts after announcement.'
-        : _isCountdownBlockedByAnnouncement
-        ? 'Item detection ready. Listen for instructions.'
-        : _isPreparingCountdown
-        ? 'Keep phone steady. Countdown starts soon.'
+        ? 'Reading result...'
+        : _hasAutoCaptured
+        ? 'Scan complete.'
         : showCountdown
-        ? 'Keep phone steady for $_secondsRemaining s'
-        : (_isMoving
-              ? 'Hold phone steady to start auto capture'
-              : 'Keep phone steady for 3 s');
+        ? 'Capturing in $_secondsRemaining s...\''
+        : 'Initializing...';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -420,105 +452,221 @@ class _ItemDetectionScreenState extends State<ItemDetectionScreen>
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CameraFeedCard(
-                      label: 'Point camera at item',
-                      accent: const Color(0xFF3B82F6),
-                      showPlaceholder: !_isCameraReady,
-                      liveFeed: _isCameraReady && _cameraController != null
-                          ? CameraPreview(_cameraController!)
-                          : null,
-                    ),
-                    Container(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (showCountdown)
-                            Container(
-                              width: 92,
-                              height: 92,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black26,
-                                    blurRadius: 12,
-                                    offset: Offset(0, 5),
+                child: GestureDetector(
+                  onTap: _onScreenTap,
+                  onLongPressStart: _onLongPressStart,
+                  onLongPressEnd: _onLongPressEnd,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CameraFeedCard(
+                        label: 'Point camera at item',
+                        accent: const Color(0xFF3B82F6),
+                        showPlaceholder: !_isCameraReady,
+                        liveFeed: _isCameraReady && _cameraController != null
+                            ? CameraPreview(_cameraController!)
+                            : null,
+                      ),
+                      Container(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (showCountdown)
+                              Container(
+                                width: 92,
+                                height: 92,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black26,
+                                      blurRadius: 12,
+                                      offset: Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: Text(
+                                  '$_secondsRemaining',
+                                  style: const TextStyle(
+                                    color: Color(0xFF16A34A),
+                                    fontSize: 44,
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                ],
-                              ),
-                              child: Text(
-                                '$_secondsRemaining',
-                                style: const TextStyle(
-                                  color: Color(0xFF16A34A),
-                                  fontSize: 44,
-                                  fontWeight: FontWeight.w700,
+                                ),
+                              )
+                            else if (_isCapturing)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      'Analyzing...',
+                                      style: TextStyle(
+                                        color: Color(0xFF1F2937),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else if (_isRecording)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Recording ${_recordingSeconds}s',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else if (_isProcessingAudio)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      'Processing...',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            )
-                          else if (_isCapturing)
+                            const SizedBox(height: 14),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 22,
-                                vertical: 14,
+                                horizontal: 14,
+                                vertical: 8,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.black.withValues(alpha: 0.55),
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
+                              child: Text(
+                                statusText,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            if (_detectedItemText != _noItemDetectedText)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
                                   ),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'Analyzing...',
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF16A34A)
+                                        .withValues(alpha: 0.9),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Text(
+                                    'Long press to ask about this item',
                                     style: TextStyle(
-                                      color: Color(0xFF1F2937),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                      fontSize: 12,
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          const SizedBox(height: 14),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.55),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              statusText,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
+            if (_conversationText.isNotEmpty)
+              Container(
+                height: 100,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    _conversationText,
+                    style: const TextStyle(
+                      color: Color(0xFF1F2937),
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
             ModuleBottomSheet(
               title: 'Detected Item',
               accent: const Color(0xFFBBF7D0),

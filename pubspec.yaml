@@ -38,6 +38,8 @@ dependencies:
   http: ^1.5.0
   sensors_plus: ^6.1.2
   flutter_tts: ^4.2.2
+  record: 5.1.2
+  path_provider: ^2.1.3
 
 dev_dependencies:
   flutter_test:
@@ -95,3 +97,6 @@ flutter_launcher_icons:
   adaptive_icon_foreground: assets/images/sensebridge-app-icon.png
   adaptive_icon_background: "#FFFFFF"
   min_sdk_android: 21
+
+dependency_overrides:
+  record_linux: ^1.3.0

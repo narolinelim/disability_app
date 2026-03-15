@@ -132,6 +132,11 @@ class AppAnnouncer {
     }
   }
 
+  Future<void> stop() async {
+    await _ensureInitialized();
+    await _flutterTts.stop();
+  }
+
   Future<void> _retryWithNextEngine(
     String text, {
     required bool interrupt,
