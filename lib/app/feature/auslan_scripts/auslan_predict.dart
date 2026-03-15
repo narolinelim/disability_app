@@ -55,14 +55,21 @@ class AuslanPredictor {
     'Z',
   ];
 
-  final int stabilityWindow = 15;
-  final int stabilityMin = 12;
-  final List<String> _history = [];
+  final Duration cooldown = const Duration(seconds: 3);
+  final Set<String> lowThresholdLetters = const {
+    'I',
+    'J',
+    'K',
+    'L',
+    'M',
+    'N',
+    'O',
+    'P',
+    'Q',
+    'R',
+    'V',
+  };
 
-  final double confidenceThresholdPercent = 90.0;
-  final Duration cooldown = const Duration(seconds: 5);
-
-  String? _lastAcceptedLetter;
   DateTime? _lastAcceptedAt;
   String allLetters = '';
 
@@ -70,6 +77,16 @@ class AuslanPredictor {
 
   int get inputLength => _inputLength;
   bool get isModelLoaded => _modelLoaded;
+  bool get hasCapturedLetters => allLetters.isNotEmpty;
+
+  double thresholdForLabel(String label) {
+    return lowThresholdLetters.contains(label) ? 75.0 : 80.0;
+  }
+
+  void resetCaptureState() {
+    _lastAcceptedAt = null;
+    allLetters = '';
+  }
 
   String _readOpenAiKey() {
     try {
@@ -162,30 +179,33 @@ class AuslanPredictor {
 
     final rawLabel = labels[maxIndex];
     final confidencePercent = (confidence * 100).clamp(0.0, 100.0);
-
-    _history.add(rawLabel);
-    if (_history.length > stabilityWindow) _history.removeAt(0);
-
-    Map<String, int> counts = {};
-    for (var l in _history) {
-      counts[l] = (counts[l] ?? 0) + 1;
-    }
-    var mostCommon = counts.entries.reduce(
-      (a, b) => a.value >= b.value ? a : b,
+    return processRawPrediction(
+      rawLabel: rawLabel,
+      confidencePercent: confidencePercent,
     );
+  }
+
+  AuslanPrediction processRawPrediction({
+    required String rawLabel,
+    required double confidencePercent,
+  }) {
+    if (rawLabel.isEmpty) {
+      return AuslanPrediction(
+        rawLabel: '',
+        confidence: confidencePercent,
+        acceptedLetter: '',
+        allLetters: allLetters,
+      );
+    }
 
     var acceptedLetter = '';
     final now = DateTime.now();
-    if (confidencePercent >= confidenceThresholdPercent &&
-        mostCommon.value >= stabilityMin) {
-      if (mostCommon.key != _lastAcceptedLetter) {
-        acceptedLetter = mostCommon.key;
-        _lastAcceptedLetter = mostCommon.key;
-        _lastAcceptedAt = now;
-        allLetters += acceptedLetter;
-      } else if (_lastAcceptedAt == null ||
-          now.difference(_lastAcceptedAt!) >= cooldown) {
-        acceptedLetter = mostCommon.key;
+    final confidenceThresholdPercent = thresholdForLabel(rawLabel);
+    if (confidencePercent >= confidenceThresholdPercent) {
+      final cooldownElapsed =
+          _lastAcceptedAt == null || now.difference(_lastAcceptedAt!) >= cooldown;
+      if (cooldownElapsed) {
+        acceptedLetter = rawLabel;
         _lastAcceptedAt = now;
         allLetters += acceptedLetter;
       }
@@ -220,7 +240,7 @@ class AuslanPredictor {
       7. check the sentence before giving the answer to see if it makes sense
       if it doesnt, make it make sense with the given letters
       8. also include slang stuff too
-      9. humor would be nice too lol  
+      9. humor would be nice too lol without icon
       
     Text: '$allLetters'
     """;

@@ -21,8 +21,7 @@ class SignLanguageScreen extends StatefulWidget {
 
 class _SignLanguageScreenState extends State<SignLanguageScreen> {
   String _allLetters = '';
-  String _rawLabel = '';
-  double _confidence = 0;
+  String _meaning = '';
 
   @override
   Widget build(BuildContext context) {
@@ -44,13 +43,25 @@ class _SignLanguageScreenState extends State<SignLanguageScreen> {
                   label: 'Show hand signs to camera',
                   accent: const Color(0xFF3B82F6),
                   onPrediction: (rawLabel, confidence, allLetters) {
+                    final isNewCaptureStart =
+                        _allLetters.isEmpty && allLetters.isNotEmpty;
                     setState(() {
-                      _rawLabel = rawLabel;
-                      _confidence = confidence;
                       _allLetters = allLetters;
+                      if (isNewCaptureStart) {
+                        _meaning = '';
+                      }
                     });
                     debugPrint(
                       'RAW: $rawLabel ${confidence.toStringAsFixed(1)}% | RESULT: $allLetters',
+                    );
+                  },
+                  onFinalized: (capturedLetters, guessedText, trigger) {
+                    setState(() {
+                      _allLetters = '';
+                      _meaning = guessedText ?? '';
+                    });
+                    debugPrint(
+                      'FINALIZE($trigger): "$capturedLetters" -> "${guessedText ?? '(no result)'}"',
                     );
                   },
                 ),
@@ -59,7 +70,7 @@ class _SignLanguageScreenState extends State<SignLanguageScreen> {
             ModuleBottomSheet(
               title: 'Translation History',
               accent: const Color(0xFFE9D5FF),
-              hasData: _allLetters.isNotEmpty,
+              hasData: _allLetters.isNotEmpty || _meaning.isNotEmpty,
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -69,9 +80,11 @@ class _SignLanguageScreenState extends State<SignLanguageScreen> {
                   border: Border.all(color: const Color(0xFFE9D5FF)),
                 ),
                 child: Text(
-                  _allLetters.isEmpty
-                      ? 'Waiting for hand signs...'
-                      : '$_allLetters\nRaw: $_rawLabel ${_confidence.toStringAsFixed(1)}%',
+                  _allLetters.isNotEmpty
+                      ? '$_allLetters${_meaning.isEmpty ? '' : '\nMeaning: $_meaning'}'
+                      : (_meaning.isNotEmpty
+                            ? 'Meaning: $_meaning'
+                            : 'Waiting for hand signs...'),
                   style: const TextStyle(
                     color: Color(0xFF1F2937),
                     fontSize: 14,
