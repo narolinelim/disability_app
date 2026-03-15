@@ -8,7 +8,7 @@ class AppAnnouncer {
   static final AppAnnouncer instance = AppAnnouncer._();
   static const _preferredLanguages = ['en-US', 'en-AU', 'en_AU', 'en_US'];
   static const _screenNames = <String>[
-    'Obstacles detection screen',
+    'Obstacles detection screen, hold the screen for 3 seconds to start or stop detection',
     'Item detection screen',
     'Sign language translation screen',
     'Noise detection screen',

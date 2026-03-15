@@ -28,11 +28,22 @@ class ObstaclesScreen extends StatefulWidget {
 class _ObstaclesScreenState extends State<ObstaclesScreen> {
   final List<String> _detectedObjects = [];
   late final Future<CameraDescription?> _pipelineFuture;
+  Timer? _holdStartTimer;
+  Timer? _holdCountdownTimer;
+  int _holdSecondsRemaining = 3;
+  bool _isHoldingToStart = false;
+  bool _isLaunchingDetector = false;
 
   @override
   void initState() {
     super.initState();
     _pipelineFuture = _initializePipeline();
+  }
+
+  @override
+  void dispose() {
+    _cancelHoldActivation();
+    super.dispose();
   }
 
   Future<CameraDescription?> _initializePipeline() async {
@@ -49,33 +60,105 @@ class _ObstaclesScreenState extends State<ObstaclesScreen> {
     );
   }
 
+  // Opens the live obstacle detector screen with the given camera feed.
   Future<void> _openDetector(CameraDescription camera) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => TrafficDetectorScreen(
-          camera: camera,
-          frameResultStream: (result) {
-            if (!mounted) {
-              return;
-            }
-            setState(() {
-              _detectedObjects
-                ..clear()
-                ..addAll(result.objectLabels);
-            });
+    if (_isLaunchingDetector) {
+      return;
+    }
 
-            unawaited(
-              AppAnnouncer.instance.announceDetectedObjects(
-                result.objectLabels,
-                proximityScore: result.proximityScore,
-              ),
-            );
-          },
+    _cancelHoldActivation();
+    if (mounted) {
+      setState(() {
+        _isLaunchingDetector = true;
+      });
+    }
+
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => TrafficDetectorScreen(
+            camera: camera,
+            frameResultStream: (result) {
+              if (!mounted) {
+                return;
+              }
+              setState(() {
+                _detectedObjects
+                  ..clear()
+                  ..addAll(result.objectLabels);
+              });
+
+              unawaited(
+                AppAnnouncer.instance.announceDetectedObjects(
+                  result.objectLabels,
+                  proximityScore: result.proximityScore,
+                ),
+              );
+            },
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLaunchingDetector = false;
+        });
+      }
+    }
   }
 
+  void _startHoldActivation(CameraDescription camera) {
+    if (_isLaunchingDetector) {
+      return;
+    }
+
+    _cancelHoldActivation();
+    setState(() {
+      _isHoldingToStart = true;
+      _holdSecondsRemaining = 3;
+    });
+
+    _holdCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() {
+        _holdSecondsRemaining = (_holdSecondsRemaining - 1).clamp(0, 3);
+      });
+
+      if (_holdSecondsRemaining == 0) {
+        timer.cancel();
+      }
+    });
+
+    _holdStartTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) {
+        return;
+      }
+      _openDetector(camera);
+    });
+  }
+
+  void _cancelHoldActivation() {
+    _holdStartTimer?.cancel();
+    _holdCountdownTimer?.cancel();
+    _holdStartTimer = null;
+    _holdCountdownTimer = null;
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isHoldingToStart = false;
+      _holdSecondsRemaining = 3;
+    });
+  }
+
+
+  // Widget building 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,13 +203,19 @@ class _ObstaclesScreenState extends State<ObstaclesScreen> {
                         }
 
                         return GestureDetector(
-                          onTap: () => _openDetector(camera),
+                          onTapDown: (_) => _startHoldActivation(camera),
+                          onTapCancel: _cancelHoldActivation,
+                          onTapUp: (_) => _cancelHoldActivation(),
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              const CameraFeedCard(
-                                label: 'Tap to open live detection',
-                                accent: Color(0xFF3B82F6),
+                              CameraFeedCard(
+                                label: _isLaunchingDetector
+                                    ? 'Opening live detection...'
+                                    : _isHoldingToStart
+                                        ? 'Keep holding...'
+                                        : 'Press and hold for 3 seconds to start',
+                                accent: const Color(0xFF3B82F6),
                               ),
                               Align(
                                 alignment: Alignment.bottomCenter,
@@ -141,9 +230,13 @@ class _ObstaclesScreenState extends State<ObstaclesScreen> {
                                       color: const Color(0xFF2563EB),
                                       borderRadius: BorderRadius.circular(999),
                                     ),
-                                    child: const Text(
-                                      'Start Live Detection',
-                                      style: TextStyle(
+                                    child: Text(
+                                      _isLaunchingDetector
+                                          ? 'Opening...'
+                                          : _isHoldingToStart
+                                              ? 'Hold $_holdSecondsRemaining s'
+                                              : 'Hold to Start',
+                                      style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w700,
                                       ),
