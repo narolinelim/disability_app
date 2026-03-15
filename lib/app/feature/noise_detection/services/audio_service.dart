@@ -35,6 +35,7 @@ class AudioService {
   Stream<NoiseFrameResult> get resultsStream => _resultsController.stream;
   bool get isRecording => _isRecording;
 
+  // Starts streaming audio
   Future<void> startRecording() async {
     if (_isDisposed || _isRecording) {
       return;
@@ -58,17 +59,21 @@ class AudioService {
     _audioSubscription = stream.listen(_onAudioChunk);
   }
 
+  // Handles incoming audio chunks, builds model windows, computes dB, and emits results.
   void _onAudioChunk(Uint8List data) {
     if (_isDisposed || !_isRecording) {
       return;
     }
 
+    // Convert byte to float 
+    // The audio stream is PCM 16-bit, so we interpret the byte data as signed 16-bit integers and normalize to [-1.0, 1.0].
     final int16Buffer =
         data.buffer.asInt16List(data.offsetInBytes ~/ 2, data.lengthInBytes ~/ 2);
     _sampleBuffer.addAll(int16Buffer.map((sample) => sample / 32768.0));
 
     while (_sampleBuffer.length >= NoiseDetectionConfig.modelInputSamples) {
       // Build a fixed-size model window and then advance by hopSamples (overlap windowing).
+      // So this run inference every hopSamples (in config). The sliding window move forward by hopSamples amount
       final window = _sampleBuffer
           .take(NoiseDetectionConfig.modelInputSamples)
           .toList(growable: false);

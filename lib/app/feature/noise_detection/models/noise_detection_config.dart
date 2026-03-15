@@ -18,6 +18,6 @@ class NoiseDetectionConfig {
 
 	static const double confidenceThreshold = 0.25;
 	static const double alertDecibelThreshold = 55.0;
-	static const int predictionIntervalMs = 2000;
+	static const int predictionIntervalMs = 1000;
 	static const int intraOpThreads = 2;
 }

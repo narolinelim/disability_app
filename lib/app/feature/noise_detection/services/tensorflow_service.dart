@@ -34,6 +34,7 @@ class NoiseTensorflowService {
 		_initialized = true;
 	}
 
+	// Loads the TFLite model from bundled assets and creates the interpreter.
 	Future<void> _loadModel() async {
 		final options = InterpreterOptions()
 			..threads = NoiseDetectionConfig.intraOpThreads;
@@ -43,6 +44,7 @@ class NoiseTensorflowService {
 		);
 	}
 
+	// Loads the CSV label file and builds a class index to metadata map.
 	Future<void> _loadLabels() async {
 		final csv = await rootBundle.loadString(NoiseDetectionConfig.labelsAssetPath);
 		final rows = csv.split(RegExp(r'\r?\n'));
