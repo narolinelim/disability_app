@@ -44,6 +44,7 @@ class SignLanguageCameraCard extends StatefulWidget {
 
 class _SignLanguageCameraCardState extends State<SignLanguageCameraCard> {
   CameraController? _controller;
+  bool _isDisposed = false;
   bool _isInitialized = false;
   bool _isPredicting = false;
   String _prediction = '';
@@ -79,31 +80,52 @@ class _SignLanguageCameraCardState extends State<SignLanguageCameraCard> {
       orElse: () => cameras.first,
     );
 
-    _controller = CameraController(
+    final controller = CameraController(
       front,
       ResolutionPreset.medium,
       imageFormatGroup: defaultTargetPlatform == TargetPlatform.iOS
           ? ImageFormatGroup.bgra8888
           : ImageFormatGroup.yuv420,
     );
-    await _controller!.initialize();
-    await _controller!.startImageStream((frame) {
-      _latestFrame = frame;
-    });
+    try {
+      await controller.initialize();
+      if (!mounted || _isDisposed) {
+        await controller.dispose();
+        return;
+      }
 
-    if (mounted) {
+      await controller.startImageStream((frame) {
+        if (!mounted || _isDisposed) {
+          return;
+        }
+        _latestFrame = frame;
+      });
+
+      if (!mounted || _isDisposed) {
+        await controller.dispose();
+        return;
+      }
+
+      _controller = controller;
       setState(() => _isInitialized = true);
       _timer = Timer.periodic(
         const Duration(milliseconds: 350),
         (_) => _sendFrame(),
       );
+    } catch (e) {
+      debugPrint('Camera Init Error: $e');
+      try {
+        await controller.dispose();
+      } catch (_) {}
     }
   }
 
   Future<void> _sendFrame() async {
-    if (_isPredicting ||
-        _controller == null ||
-        !_controller!.value.isInitialized ||
+    final controller = _controller;
+    if (_isDisposed ||
+        _isPredicting ||
+        controller == null ||
+        !controller.value.isInitialized ||
         _predictor == null ||
         _latestFrame == null) {
       return;
@@ -338,11 +360,16 @@ class _SignLanguageCameraCardState extends State<SignLanguageCameraCard> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _timer?.cancel();
-    if (_controller?.value.isStreamingImages ?? false) {
-      unawaited(_controller!.stopImageStream());
+    final controller = _controller;
+    _controller = null;
+    if (controller?.value.isStreamingImages ?? false) {
+      unawaited(controller!.stopImageStream().catchError((_) {}));
     }
-    _controller?.dispose();
+    if (controller != null) {
+      unawaited(controller.dispose().catchError((_) {}));
+    }
     super.dispose();
   }
 

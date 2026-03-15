@@ -30,42 +30,47 @@ class _SignLanguageScreenState extends State<SignLanguageScreen> {
       body: SafeArea(
         top: false,
         bottom: false,
-        child: Column(
+        child: Stack(
           children: [
-            const ModuleHeader(
-              title: 'Sign Language Translation',
-              accent: Color(0xFF9333EA),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: SignLanguageCameraCard(
-                  label: 'Show hand signs to camera',
-                  accent: const Color(0xFF3B82F6),
-                  onPrediction: (rawLabel, confidence, allLetters) {
-                    final isNewCaptureStart =
-                        _allLetters.isEmpty && allLetters.isNotEmpty;
-                    setState(() {
-                      _allLetters = allLetters;
-                      if (isNewCaptureStart) {
-                        _meaning = '';
-                      }
-                    });
-                    debugPrint(
-                      'RAW: $rawLabel ${confidence.toStringAsFixed(1)}% | RESULT: $allLetters',
-                    );
-                  },
-                  onFinalized: (capturedLetters, guessedText, trigger) {
-                    setState(() {
-                      _allLetters = '';
-                      _meaning = guessedText ?? '';
-                    });
-                    debugPrint(
-                      'FINALIZE($trigger): "$capturedLetters" -> "${guessedText ?? '(no result)'}"',
-                    );
-                  },
+            Column(
+              children: [
+                const ModuleHeader(
+                  title: 'Sign Language Translation',
+                  accent: Color(0xFF9333EA),
                 ),
-              ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: SignLanguageCameraCard(
+                      label: 'Show hand signs to camera',
+                      accent: const Color(0xFF3B82F6),
+                      onPrediction: (rawLabel, confidence, allLetters) {
+                        final isNewCaptureStart =
+                            _allLetters.isEmpty && allLetters.isNotEmpty;
+                        setState(() {
+                          _allLetters = allLetters;
+                          if (isNewCaptureStart) {
+                            _meaning = '';
+                          }
+                        });
+                        debugPrint(
+                          'RAW: $rawLabel ${confidence.toStringAsFixed(1)}% | RESULT: $allLetters',
+                        );
+                      },
+                      onFinalized: (capturedLetters, guessedText, trigger) {
+                        setState(() {
+                          _allLetters = '';
+                          _meaning = guessedText ?? '';
+                        });
+                        debugPrint(
+                          'FINALIZE($trigger): "$capturedLetters" -> "${guessedText ?? '(no result)'}"',
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: ModuleBottomSheet.collapsedHeight),
+              ],
             ),
             ModuleBottomSheet(
               title: 'Translation History',
