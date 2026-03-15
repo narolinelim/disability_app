@@ -5,6 +5,7 @@ import 'app/sense_bridge_home.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
   runApp(const SenseBridgeApp());
