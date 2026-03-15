@@ -92,4 +92,5 @@ flutter_launcher_icons:
   image_path: assets/images/sensebridge-app-icon.png
   adaptive_icon_foreground: assets/images/sensebridge-app-icon.png
   adaptive_icon_background: "#FFFFFF"
+  remove_alpha_ios: true
   min_sdk_android: 21
