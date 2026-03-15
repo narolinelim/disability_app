@@ -181,6 +181,9 @@ class _TrafficDetectorScreenState extends State<TrafficDetectorScreen> {
                   child: DetectionOverlay(
                     detections: _latestResult.detections,
                     previewSize: controller.value.previewSize,
+                    sensorOrientation: widget.camera.sensorOrientation,
+                    mirrorHorizontally:
+                        widget.camera.lensDirection == CameraLensDirection.front,
                   ),
                 ),
                 Positioned(
